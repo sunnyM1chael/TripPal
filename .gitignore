@@ -1,0 +1,37 @@
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Java build output and runtime files
+**/target/
+**/.flattened-pom.xml
+**/logs/
+*.log
+
+# JavaScript dependencies and build output
+**/node_modules/
+**/dist/
+**/.vite/
+
+# Python environments, caches, and build output
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/*.py[cod]
+**/.coverage
+**/htmlcov/
+**/build/
+**/*.egg-info/
+

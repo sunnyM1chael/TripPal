@@ -1,0 +1,2 @@
+"""Agent platform application package."""
+
