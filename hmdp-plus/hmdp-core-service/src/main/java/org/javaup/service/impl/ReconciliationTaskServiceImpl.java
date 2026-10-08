@@ -11,6 +11,11 @@ import org.javaup.entity.VoucherReconcileLog;
 import org.javaup.enums.LogType;
 import org.javaup.enums.ReconciliationStatus;
 import org.javaup.model.RedisTraceLogModel;
+import org.javaup.kafka.consumer.SeckillOrderProcessor;
+import org.javaup.kafka.consumer.OrderConsumeResult;
+import org.javaup.kafka.message.SeckillVoucherMessage;
+import org.javaup.message.MessageExtend;
+import java.util.Date;
 import org.javaup.redis.RedisCache;
 import org.javaup.redis.RedisKeyBuild;
 import org.javaup.service.IReconciliationTaskService;
@@ -21,6 +26,7 @@ import org.javaup.servicelock.LockType;
 import org.javaup.servicelock.annotion.ServiceLock;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -56,6 +62,21 @@ public class ReconciliationTaskServiceImpl implements IReconciliationTaskService
     @Resource
     private RedisCache redisCache;
     
+    @Resource
+    private SeckillOrderProcessor orderProcessor;
+
+    /** 补上 Redis 扣减后、发送前崩溃，以及发送失败回调未能持久化取消的窗口。 */
+    @Scheduled(fixedDelayString = "${seckill.order.orphanRecoveryDelayMillis:60000}")
+    public void recoverOrphanReservations() {
+        for (SeckillVoucher voucher : seckillVoucherService.lambdaQuery().list()) {
+            try {
+                redisDeductTraceWithoutDbOrder(voucher.getVoucherId(), loadRedisTraceLogMap(voucher.getVoucherId()));
+            } catch (Exception failure) {
+                log.warn("Redis 占券流水恢复失败，voucherId={}", voucher.getVoucherId(), failure);
+            }
+        }
+    }
+
     @Override
     public void reconciliationTaskExecute() {
         List<SeckillVoucher> seckillVoucherList = seckillVoucherService.lambdaQuery().list();
@@ -146,41 +167,31 @@ public class ReconciliationTaskServiceImpl implements IReconciliationTaskService
     }
     
 
-    private void redisDeductTraceWithoutDbOrder(Long voucherId, Map<String, RedisTraceLogModel> redisTraceLogMap) {
-        if (voucherId == null || CollectionUtil.isEmpty(redisTraceLogMap)) {
+    private void redisDeductTraceWithoutDbOrder(Long voucherId, Map<String, RedisTraceLogModel> traces) {
+        if (voucherId == null || CollectionUtil.isEmpty(traces)) {
             return;
         }
-        RedisKeyBuild traceLogKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId);
-        RedisKeyBuild seckillUserKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_USER_TAG_KEY, voucherId);
-        boolean delRedisStockHasHappened = false;
         long now = System.currentTimeMillis();
-        for (Entry<String, RedisTraceLogModel> redisTraceLogModelEntry : redisTraceLogMap.entrySet()) {
-            String traceId = redisTraceLogModelEntry.getKey();
-            RedisTraceLogModel redisTraceLogModel = redisTraceLogModelEntry.getValue();
-            if (redisTraceLogModel == null) {
+        for (RedisTraceLogModel trace : traces.values()) {
+            if (trace == null || !String.valueOf(LogType.DEDUCT.getCode()).equals(trace.getLogType())
+                    || trace.getTs() == null || now - trace.getTs() < MESSAGE_DELAY_TIME + 2000) {
                 continue;
             }
-            if (!String.valueOf(LogType.DEDUCT.getCode()).equals(redisTraceLogModel.getLogType())) {
-                continue;
-            }
-            String orderId = redisTraceLogModel.getOrderId();
-            VoucherReconcileLog voucherReconcileLog = 
-                    voucherReconcileLogService.lambdaQuery()
-                            .eq(VoucherReconcileLog::getOrderId, Long.parseLong(orderId))
-                            .eq(VoucherReconcileLog::getTraceId, Long.parseLong(traceId))
-                            .one();
-            if (Objects.isNull(voucherReconcileLog)){
-                Long traceTs = redisTraceLogModel.getTs();
-                if (traceTs != null && now - traceTs < (MESSAGE_DELAY_TIME + 2000)) {
-                    continue;
+            try {
+                // 对账也必须经过订单检查和同一业务锁，不能直接删除购买资格。
+                SeckillVoucherMessage body = new SeckillVoucherMessage(Long.valueOf(trace.getUserId()),
+                        voucherId, Long.valueOf(trace.getOrderId()), Long.valueOf(trace.getTraceId()),
+                        trace.getBeforeQty(), trace.getChangeQty(), trace.getAfterQty(), Boolean.FALSE);
+                MessageExtend<SeckillVoucherMessage> message = MessageExtend.of(body);
+                message.setProducerTime(new Date(trace.getTs()));
+                OrderConsumeResult result = orderProcessor.cancel(message, "RECONCILIATION_ORPHAN_RESERVATION");
+                if (result == OrderConsumeResult.CANCELLED) {
+                    // 终态已持久化，清理待恢复的扣减流水；恢复流水和订单补偿记录仍保留。
+                    redisCache.delForHash(RedisKeyBuild.createRedisKey(
+                            RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId), trace.getTraceId());
                 }
-                log.error("发现Redis扣减流水存在，但DB订单不存在的情况，voucherId={}, orderId={}", voucherId, orderId);
-                if (!delRedisStockHasHappened) {
-                    ((IReconciliationTaskService) AopContext.currentProxy()).delRedisStock(voucherId);
-                    delRedisStockHasHappened = true;
-                }
-                redisCache.delForHash(traceLogKey, traceId);
-                redisCache.removeForSet(seckillUserKey, redisTraceLogModel.getUserId());
+            } catch (Exception failure) {
+                log.warn("对账补偿暂未完成，voucherId={}, orderId={}", voucherId, trace.getOrderId(), failure);
             }
         }
     }

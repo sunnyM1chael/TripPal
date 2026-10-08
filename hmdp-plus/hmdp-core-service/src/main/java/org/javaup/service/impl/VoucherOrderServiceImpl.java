@@ -40,7 +40,7 @@ import org.javaup.message.MessageExtend;
 import org.javaup.model.SeckillVoucherFullModel;
 import org.javaup.redis.RedisCacheImpl;
 import org.javaup.redis.RedisKeyBuild;
-import org.javaup.repeatexecutelimit.annotion.RepeatExecuteLimit;
+import org.javaup.exception.OrderRejectedException;
 import org.javaup.service.ISeckillVoucherService;
 import org.javaup.service.IUserInfoService;
 import org.javaup.service.IVoucherOrderRouterService;
@@ -82,7 +82,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.javaup.constant.Constant.SECKILL_VOUCHER_TOPIC;
-import static org.javaup.constant.RepeatExecuteLimitConstants.SECKILL_VOUCHER_ORDER;
 
 /**
  * @program: 黑马点评-plus升级版实战项目。添加 阿星不是程序员 微信，添加时备注 点评 来获取项目的完整资料
@@ -347,7 +346,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         List<String> keys = ListUtil.of(
                 RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_STOCK_TAG_KEY, voucherId).getRelKey(),
                 RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_USER_TAG_KEY, voucherId).getRelKey(),
-                RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId).getRelKey()
+                RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId).getRelKey(),
+                RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_RESERVATION_OWNER_TAG_KEY, voucherId).getRelKey()
         );
         String[] args = new String[9];
         args[0] = voucherId.toString();
@@ -468,7 +468,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     
     
     @Override
-    @RepeatExecuteLimit(name = SECKILL_VOUCHER_ORDER,keys = {"#message.uuid"})
     @Transactional(rollbackFor = Exception.class)
     public boolean createVoucherOrderV2(MessageExtend<SeckillVoucherMessage> message) {
         SeckillVoucherMessage messageBody = message.getMessageBody();
@@ -480,7 +479,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 .one();
         if (Objects.nonNull(normalVoucherOrder)) {
             log.warn("已存在此订单，voucherId：{},userId：{}", normalVoucherOrder.getVoucherId(), userId);
-            throw new HmdpFrameException(BaseCode.VOUCHER_ORDER_EXIST);
+            throw new OrderRejectedException("USER_ALREADY_HAS_ANOTHER_ORDER");
         }
         boolean success = seckillVoucherService.update()
                 .setSql("stock = stock - 1")
@@ -488,14 +487,16 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 .gt("stock", 0)
                 .update();
         if (!success) {
-            throw new HmdpFrameException("优惠券库存不足！优惠券id:" + messageBody.getVoucherId());
+            throw new OrderRejectedException("DB_STOCK_EXHAUSTED");
         }
         VoucherOrder voucherOrder = new VoucherOrder();
         voucherOrder.setId(messageBody.getOrderId());
         voucherOrder.setUserId(messageBody.getUserId());
         voucherOrder.setVoucherId(messageBody.getVoucherId());
         voucherOrder.setCreateTime(LocalDateTimeUtil.now());
-        save(voucherOrder);
+        if (!save(voucherOrder)) {
+            throw new IllegalStateException("保存订单失败");
+        }
         VoucherOrderRouter voucherOrderRouter = new VoucherOrderRouter();
         voucherOrderRouter.setId(snowflakeIdGenerator.nextId());
         voucherOrderRouter.setOrderId(voucherOrder.getId());
@@ -503,19 +504,24 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         voucherOrderRouter.setVoucherId(voucherOrder.getVoucherId());
         voucherOrderRouter.setCreateTime(LocalDateTimeUtil.now());
         voucherOrderRouter.setUpdateTime(LocalDateTimeUtil.now());
-        voucherOrderRouterService.save(voucherOrderRouter);
+        if (!voucherOrderRouterService.save(voucherOrderRouter)) {
+            throw new IllegalStateException("保存订单路由失败");
+        }
         redisCache.set(RedisKeyBuild.createRedisKey(
                 RedisKeyManage.DB_SECKILL_ORDER_KEY,messageBody.getOrderId()),
                 voucherOrder,
                 60, 
                 TimeUnit.SECONDS
         );
-        voucherReconcileLogService.saveReconcileLog(
+        boolean savedLog = voucherReconcileLogService.saveReconcileLog(
                 LogType.DEDUCT.getCode(),
                 BusinessType.SUCCESS.getCode(),
                 "order created",
                 message
         );
+        if (!savedLog) {
+            throw new IllegalStateException("保存订单对账日志失败");
+        }
         return true;
     }
     
@@ -727,7 +733,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         String stockKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_STOCK_TAG_KEY, voucherId).getRelKey();
         String userKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_USER_TAG_KEY, voucherId).getRelKey();
         String traceKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId).getRelKey();
-        return ListUtil.of(stockKey, userKey, traceKey);
+        String ownerKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_RESERVATION_OWNER_TAG_KEY, voucherId).getRelKey();
+        return ListUtil.of(stockKey, userKey, traceKey, ownerKey);
     }
     
     private String[] buildSeckillArgs(final Long voucherId,

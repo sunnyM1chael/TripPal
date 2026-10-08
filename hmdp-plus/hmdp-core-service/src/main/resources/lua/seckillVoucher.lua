@@ -1,6 +1,7 @@
 local stockKey = KEYS[1]
 local seckillUserKey = KEYS[2]
 local traceLogKey = KEYS[3]
+local reservationOwnerKey = KEYS[4]
 local voucherId = ARGV[1]
 local userId = ARGV[2]
 local beginTime = tonumber(ARGV[3])
@@ -40,6 +41,7 @@ local changeQty = 1
 local afterQty = beforeQty - changeQty
 redis.call('incrby', stockKey, -changeQty)
 redis.call('sadd', seckillUserKey, userId)
+redis.call('hset', reservationOwnerKey, userId, orderId)
 local timeArr2 = redis.call('TIME')
 local logNowMillis = tonumber(timeArr2[1]) * 1000 + math.floor(tonumber(timeArr2[2]) / 1000)
 local logEntry = cjson.encode({

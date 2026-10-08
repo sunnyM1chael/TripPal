@@ -3,11 +3,9 @@ package org.javaup.kafka.producer;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.javaup.AbstractProducerHandler;
-import org.javaup.enums.SeckillVoucherOrderOperate;
 import org.javaup.kafka.message.SeckillVoucherMessage;
-import org.javaup.kafka.redis.RedisVoucherData;
+import org.javaup.kafka.consumer.SeckillOrderProcessor;
 import org.javaup.message.MessageExtend;
-import org.javaup.toolkit.SnowflakeIdGenerator;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -20,12 +18,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class SeckillVoucherProducer extends AbstractProducerHandler<MessageExtend<SeckillVoucherMessage>> {
     
-    @Resource
-    private SnowflakeIdGenerator snowflakeIdGenerator;
     
     
     @Resource
-    private RedisVoucherData redisVoucherData;
+    private SeckillOrderProcessor orderProcessor;
     
     public SeckillVoucherProducer(final KafkaTemplate<String,MessageExtend<SeckillVoucherMessage>> kafkaTemplate) {
         super(kafkaTemplate);
@@ -34,15 +30,7 @@ public class SeckillVoucherProducer extends AbstractProducerHandler<MessageExten
     @Override
     protected void afterSendFailure(final String topic, final MessageExtend<SeckillVoucherMessage> message, final Throwable throwable) {
         super.afterSendFailure(topic, message, throwable);
-        long traceId = snowflakeIdGenerator.nextId();
-        redisVoucherData.rollbackRedisVoucherData(
-                SeckillVoucherOrderOperate.YES,
-                traceId,
-                message.getMessageBody().getVoucherId(),
-                message.getMessageBody().getUserId(),
-                message.getMessageBody().getOrderId(),
-                message.getMessageBody().getAfterQty(),
-                message.getMessageBody().getChangeQty(),
-                message.getMessageBody().getBeforeQty());
+        // 发送异常可能是确认超时，订单可能已经被消费；先核对结果再决定取消。
+        orderProcessor.cancel(message, "SEND_FAILURE");
     }
 }

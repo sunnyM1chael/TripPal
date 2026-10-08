@@ -4,22 +4,13 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.javaup.consumer.AbstractConsumerHandler;
 import org.javaup.core.RedisKeyManage;
-import org.javaup.enums.BaseCode;
-import org.javaup.enums.BusinessType;
-import org.javaup.enums.LogType;
-import org.javaup.enums.SeckillVoucherOrderOperate;
-import org.javaup.exception.HmdpFrameException;
 import org.javaup.kafka.message.SeckillVoucherMessage;
-import org.javaup.kafka.redis.RedisVoucherData;
 import org.javaup.message.MessageExtend;
 import org.javaup.model.SeckillVoucherFullModel;
 import org.javaup.redis.RedisCache;
 import org.javaup.redis.RedisKeyBuild;
 import org.javaup.service.IAutoIssueNotifyService;
 import org.javaup.service.ISeckillVoucherService;
-import org.javaup.service.IVoucherOrderService;
-import org.javaup.service.IVoucherReconcileLogService;
-import org.javaup.toolkit.SnowflakeIdGenerator;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -53,11 +44,7 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
     
     public static Long MESSAGE_DELAY_TIME = 10000L;
     
-    @Resource
-    private IVoucherOrderService voucherOrderService;
     
-    @Resource
-    private RedisVoucherData redisVoucherData;
     
     @Resource
     private RedisCache redisCache;
@@ -65,11 +52,7 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
     @Resource
     private ISeckillVoucherService seckillVoucherService;
     
-    @Resource
-    private IVoucherReconcileLogService voucherReconcileLogService;
      
-    @Resource
-    private SnowflakeIdGenerator snowflakeIdGenerator;
     
     
     @Resource
@@ -119,7 +102,8 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
     
    
     @KafkaListener(
-            topics = {SPRING_INJECT_PREFIX_DISTINCTION_NAME + "-" + SECKILL_VOUCHER_TOPIC}
+            topics = {SPRING_INJECT_PREFIX_DISTINCTION_NAME + "-" + SECKILL_VOUCHER_TOPIC},
+            containerFactory = "seckillOrderKafkaListenerContainerFactory"
     )
     public void onMessage(String value,
                           @Headers Map<String, Object> headers,
@@ -131,48 +115,18 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
         }
     }
     
-    @Override
-    protected Boolean beforeConsume(MessageExtend<SeckillVoucherMessage> message) {
-        long producerTimeTimestamp = message.getProducerTime().getTime();
-        long delayTime = System.currentTimeMillis() - producerTimeTimestamp;
-        //如果消息超时时间达到了阈值（10秒）
-        if (delayTime > MESSAGE_DELAY_TIME){
-            log.info("消费到kafka的创建优惠券消息延迟时间大于了 {} 毫秒 此订单消息被丢弃 订单号 : {}",
-                    delayTime,message.getMessageBody().getOrderId());
-            long traceId = snowflakeIdGenerator.nextId();
-            redisVoucherData.rollbackRedisVoucherData(
-                    SeckillVoucherOrderOperate.YES,
-                    traceId,
-                    message.getMessageBody().getVoucherId(),
-                    message.getMessageBody().getUserId(),
-                    message.getMessageBody().getOrderId(),
-                    // 这是回滚操作，所以redis中扣减前和扣减后的数量要和消息中的反过来
-                    message.getMessageBody().getAfterQty(),
-                    message.getMessageBody().getChangeQty(),
-                    message.getMessageBody().getBeforeQty()
-            );
-            try {
-                voucherReconcileLogService.saveReconcileLog(LogType.RESTORE.getCode(), 
-                        BusinessType.TIMEOUT.getCode(), 
-                        "message delayed " + delayTime + "ms, rollback redis", 
-                        traceId,
-                        message);
-            } catch (Exception e) {
-                log.warn("保存对账日志失败(延迟丢弃)", e);
-            }
-            return false;
-        }
-        return true;
-    }
-    
+    @Resource
+    private SeckillOrderProcessor orderProcessor;
+
     @Override
     protected void doConsume(MessageExtend<SeckillVoucherMessage> message) {
-        voucherOrderService.createVoucherOrderV2(message);
+        OrderConsumeResult result = orderProcessor.process(message);
+        if (result == OrderConsumeResult.CREATED) {
+            afterOrderCreated(message);
+        }
     }
-    
-    @Override
-    protected void afterConsumeSuccess(MessageExtend<SeckillVoucherMessage> message) {
-        super.afterConsumeSuccess(message);
+
+    private void afterOrderCreated(MessageExtend<SeckillVoucherMessage> message) {
         SeckillVoucherMessage messageBody = message.getMessageBody();
         Long userId = messageBody.getUserId();
         Long voucherId = messageBody.getVoucherId();
@@ -220,37 +174,8 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
     }
     
     @Override
-    protected void afterConsumeFailure(final MessageExtend<SeckillVoucherMessage> message, 
-                                       final Throwable throwable) {
+    protected void afterConsumeFailure(MessageExtend<SeckillVoucherMessage> message, Throwable throwable) {
+        // 临时失败只记录并交给 Kafka 重试；取消补偿由 orderProcessor 统一决定。
         super.afterConsumeFailure(message, throwable);
-        SeckillVoucherOrderOperate seckillVoucherOrderOperate = SeckillVoucherOrderOperate.YES;
-        if (throwable instanceof HmdpFrameException hmdpFrameException) {
-            if (Objects.nonNull(hmdpFrameException.getCode()) && 
-                    hmdpFrameException.getCode().equals(BaseCode.VOUCHER_ORDER_EXIST.getCode())){
-                seckillVoucherOrderOperate = SeckillVoucherOrderOperate.NO;
-            }
-        }
-        long traceId = snowflakeIdGenerator.nextId();
-        redisVoucherData.rollbackRedisVoucherData(
-                seckillVoucherOrderOperate,
-                traceId,
-                message.getMessageBody().getVoucherId(),
-                message.getMessageBody().getUserId(),
-                message.getMessageBody().getOrderId(),
-                message.getMessageBody().getAfterQty(),
-                message.getMessageBody().getChangeQty(),
-                message.getMessageBody().getBeforeQty()
-        );
-        try {
-            String detail = throwable == null ? "consume failed" : ("consume failed: " + throwable.getMessage());
-            voucherReconcileLogService.saveReconcileLog(LogType.RESTORE.getCode(),
-                    BusinessType.FAIL.getCode(), 
-                    detail,
-                    traceId,
-                    message
-            );
-        } catch (Exception e) {
-            log.warn("保存对账日志失败(消费失败)", e);
-        }
     }
 }

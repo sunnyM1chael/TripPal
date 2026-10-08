@@ -55,7 +55,7 @@ public class RedisVoucherData {
     @Value("${seckill.rollback.retry.maxBackoffMillis:1000}")
     private long maxBackoffMillis;
     
-    public void rollbackRedisVoucherData(SeckillVoucherOrderOperate seckillVoucherOrderOperate,
+    public boolean rollbackRedisVoucherData(SeckillVoucherOrderOperate seckillVoucherOrderOperate,
                                          Long traceId,
                                          Long voucherId,
                                          Long userId,
@@ -66,7 +66,9 @@ public class RedisVoucherData {
         List<String> keys = ListUtil.of(
                 RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_STOCK_TAG_KEY, voucherId).getRelKey(),
                 RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_USER_TAG_KEY, voucherId).getRelKey(),
-                RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId).getRelKey()
+                RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId).getRelKey(),
+                RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_RESERVATION_OWNER_TAG_KEY, voucherId).getRelKey(),
+                RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_COMPENSATED_ORDER_TAG_KEY, voucherId).getRelKey()
         );
         String[] args = new String[9];
         args[0] = String.valueOf(voucherId);
@@ -87,6 +89,7 @@ public class RedisVoucherData {
             saveRollbackFailureLog(voucherId, userId, orderId, traceId, "redis rollback failed after retries: " + reason, finalCode);
             safeInc("seckill_rollback_retry_give_up", "component", "redis_voucher_data");
         }
+        return ok;
     }
     
     private Integer luaRollbackWithResultCode(

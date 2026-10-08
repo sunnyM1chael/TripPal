@@ -22,6 +22,12 @@ public enum RedisKeyManage {
     SECKILL_STOCK_TAG_KEY("seckill:stock:{%s}","秒杀券id（同槽位HashTag）","value为库存","k"),
     
     SECKILL_USER_TAG_KEY("seckill:user:{%s}","秒杀券id（同槽位HashTag）","value为已下单用户集合","k"),
+
+    SECKILL_RESERVATION_OWNER_TAG_KEY("seckill:reservation:owner:{%s}","秒杀券id","HASH 用户id对应占券订单id","k"),
+
+    SECKILL_COMPENSATED_ORDER_TAG_KEY("seckill:compensated:order:{%s}","秒杀券id","HASH 已补偿订单id对应流水id","k"),
+
+    SECKILL_ORDER_PROCESS_LOCK("seckill:order:process:{%s}:%s","券id与用户id","下单与补偿业务锁","k"),
     
     SECKILL_VOUCHER_TAG_KEY("seckill:voucher:{%s}","秒杀券id（同槽位HashTag）","value为SeckillVoucher类型","k"),
     
