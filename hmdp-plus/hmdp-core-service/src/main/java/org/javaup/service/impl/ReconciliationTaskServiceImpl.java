@@ -49,19 +49,19 @@ import static org.javaup.kafka.consumer.SeckillVoucherConsumer.MESSAGE_DELAY_TIM
 @Service
 @Slf4j
 public class ReconciliationTaskServiceImpl implements IReconciliationTaskService {
-    
+
     @Resource
     private ISeckillVoucherService seckillVoucherService;
-    
+
     @Resource
     private IVoucherOrderService voucherOrderService;
-    
+
     @Resource
     private IVoucherReconcileLogService voucherReconcileLogService;
-    
+
     @Resource
     private RedisCache redisCache;
-    
+
     @Resource
     private SeckillOrderProcessor orderProcessor;
 
@@ -84,11 +84,11 @@ public class ReconciliationTaskServiceImpl implements IReconciliationTaskService
             reconciliationTaskExecute(seckillVoucher.getVoucherId());
         }
     }
-    
+
     public void reconciliationTaskExecute(Long voucherId){
         Map<String, RedisTraceLogModel> redisTraceLogMap = loadRedisTraceLogMap(voucherId);
         redisDeductTraceWithoutDbOrder(voucherId, redisTraceLogMap);
-        
+
         List<VoucherOrder> voucherOrderList = loadPendingOrders(voucherId);
         RedisKeyBuild traceLogKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_TRACE_LOG_TAG_KEY, voucherId);
         long ttlSeconds = resolveTraceTtlSeconds(traceLogKey, voucherId);
@@ -100,7 +100,7 @@ public class ReconciliationTaskServiceImpl implements IReconciliationTaskService
                 continue;
             }
             boolean anyMissing = backfillMissingTraceLogs(logs, redisTraceLogMap, traceLogKey, ttlSeconds);
-            
+
             int dbLogCount = logs.size();
             boolean markConsistent = true;
             if (dbLogCount == 1 || dbLogCount == 2) {
@@ -118,7 +118,7 @@ public class ReconciliationTaskServiceImpl implements IReconciliationTaskService
             }
         }
     }
-    
+
     @Override
     @ServiceLock(lockType= LockType.Write,name = UPDATE_SECKILL_VOUCHER_STOCK_LOCK,keys = {"#voucherId"})
     public void delRedisStock(Long voucherId){
@@ -165,7 +165,7 @@ public class ReconciliationTaskServiceImpl implements IReconciliationTaskService
         }
         return computedTtl;
     }
-    
+
 
     private void redisDeductTraceWithoutDbOrder(Long voucherId, Map<String, RedisTraceLogModel> traces) {
         if (voucherId == null || CollectionUtil.isEmpty(traces)) {

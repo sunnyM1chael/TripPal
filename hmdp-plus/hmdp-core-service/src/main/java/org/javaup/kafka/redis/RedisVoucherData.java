@@ -30,31 +30,31 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component
 public class RedisVoucherData {
-    
+
     @Resource
     private SeckillVoucherRollBackOperate seckillVoucherRollBackOperate;
-    
+
     @Resource
     private IRollbackFailureLogService rollbackFailureLogService;
 
     @Resource
     private SnowflakeIdGenerator snowflakeIdGenerator;
-    
+
     @Resource
     private MeterRegistry meterRegistry;
-    
+
     @Resource
     private IRollbackAlertService rollbackAlertService;
-    
+
     @Value("${seckill.rollback.retry.maxAttempts:3}")
     private int retryMaxAttempts;
-    
+
     @Value("${seckill.rollback.retry.initialBackoffMillis:200}")
     private long initialBackoffMillis;
-    
+
     @Value("${seckill.rollback.retry.maxBackoffMillis:1000}")
     private long maxBackoffMillis;
-    
+
     public boolean rollbackRedisVoucherData(SeckillVoucherOrderOperate seckillVoucherOrderOperate,
                                          Long traceId,
                                          Long voucherId,
@@ -80,7 +80,7 @@ public class RedisVoucherData {
         args[6] = String.valueOf(beforeQty);
         args[7] = String.valueOf(changeQty);
         args[8] = String.valueOf(afterQty);
-        
+
         Integer finalCode = luaRollbackWithResultCode(keys, args, retryMaxAttempts, initialBackoffMillis, maxBackoffMillis);
         boolean ok = finalCode != null && finalCode.equals(BaseCode.SUCCESS.getCode());
         if (!ok) {
@@ -91,7 +91,7 @@ public class RedisVoucherData {
         }
         return ok;
     }
-    
+
     private Integer luaRollbackWithResultCode(
             List<String> keys,
             String[] args,
@@ -124,12 +124,12 @@ public class RedisVoucherData {
         }
         return lastCode;
     }
-    
+
     private long withJitter(long base) {
         long jitter = Math.round(base * 0.15 * Math.random());
         return base + jitter;
     }
-    
+
     private void sleepQuietly(long backoffMs) {
         try {
             TimeUnit.MILLISECONDS.sleep(backoffMs);
@@ -137,7 +137,7 @@ public class RedisVoucherData {
             Thread.currentThread().interrupt();
         }
     }
-    
+
     private void saveRollbackFailureLog(Long voucherId, Long userId, Long orderId, Long traceId, String detail, Integer resultCode) {
         try {
             RollbackFailureLog logEntity = new RollbackFailureLog();
@@ -160,7 +160,7 @@ public class RedisVoucherData {
             log.warn("保存回滚失败日志异常", e);
         }
     }
-    
+
     private void safeInc(String name, String tagKey, String tagValue) {
         try {
             if (meterRegistry != null) {

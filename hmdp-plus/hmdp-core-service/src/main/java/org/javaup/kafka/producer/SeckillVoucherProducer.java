@@ -17,16 +17,16 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class SeckillVoucherProducer extends AbstractProducerHandler<MessageExtend<SeckillVoucherMessage>> {
-    
-    
-    
+
+
+
     @Resource
     private SeckillOrderProcessor orderProcessor;
-    
+
     public SeckillVoucherProducer(final KafkaTemplate<String,MessageExtend<SeckillVoucherMessage>> kafkaTemplate) {
         super(kafkaTemplate);
     }
-    
+
     @Override
     protected void afterSendFailure(final String topic, final MessageExtend<SeckillVoucherMessage> message, final Throwable throwable) {
         super.afterSendFailure(topic, message, throwable);

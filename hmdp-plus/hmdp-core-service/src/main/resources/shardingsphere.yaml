@@ -1,4 +1,4 @@
-dataSources: 
+dataSources:
   ds_0:
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
@@ -29,7 +29,7 @@ dataSources:
       max-lifetime: 1800000               # 连接最大生命周期(30分钟)
       leak-detection-threshold: 30000     # 连接泄漏检测阈值(30秒)
       validation-timeout: 5000            # 连接验证超时时间(5秒)
-    
+
 rules:
   - !SHARDING
     tables:

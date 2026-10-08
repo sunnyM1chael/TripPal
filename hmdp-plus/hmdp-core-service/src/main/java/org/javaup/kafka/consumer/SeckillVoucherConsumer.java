@@ -41,28 +41,28 @@ import static org.javaup.constant.Constant.SPRING_INJECT_PREFIX_DISTINCTION_NAME
 @Slf4j
 @Component
 public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVoucherMessage> {
-    
+
     public static Long MESSAGE_DELAY_TIME = 10000L;
-    
-    
-    
+
+
+
     @Resource
     private RedisCache redisCache;
-    
+
     @Resource
     private ISeckillVoucherService seckillVoucherService;
-    
-     
-    
-    
+
+
+
+
     @Resource
     private IAutoIssueNotifyService autoIssueNotifyService;
-    
-    
+
+
     private static final int CPU_CORES = Runtime.getRuntime().availableProcessors();
     private static final int EXECUTOR_THREADS = Math.max(2, CPU_CORES);
     private static final int EXECUTOR_QUEUE_CAPACITY = 1024 * Math.max(1, CPU_CORES);
-    
+
     private static final ThreadPoolExecutor SECKILL_ORDER_CONSUME_TASK_EXECUTOR =
             new ThreadPoolExecutor(
                     EXECUTOR_THREADS,
@@ -73,17 +73,17 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
                     new NamedThreadFactory("seckill-order-consume-task", false),
                     new ThreadPoolExecutor.CallerRunsPolicy()
             );
-    
+
     private static class NamedThreadFactory implements ThreadFactory {
         private final String namePrefix;
         private final boolean daemon;
         private final AtomicInteger index = new AtomicInteger(1);
-        
+
         public NamedThreadFactory(String namePrefix, boolean daemon) {
             this.namePrefix = namePrefix;
             this.daemon = daemon;
         }
-        
+
         @Override
         public Thread newThread(Runnable r) {
             Thread t = new Thread(r, namePrefix + index.getAndIncrement());
@@ -94,13 +94,13 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
             return t;
         }
     }
-    
-    
+
+
     public SeckillVoucherConsumer() {
         super(SeckillVoucherMessage.class);
     }
-    
-   
+
+
     @KafkaListener(
             topics = {SPRING_INJECT_PREFIX_DISTINCTION_NAME + "-" + SECKILL_VOUCHER_TOPIC},
             containerFactory = "seckillOrderKafkaListenerContainerFactory"
@@ -114,7 +114,7 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
             acknowledgment.acknowledge();
         }
     }
-    
+
     @Resource
     private SeckillOrderProcessor orderProcessor;
 
@@ -172,7 +172,7 @@ public class SeckillVoucherConsumer extends AbstractConsumerHandler<SeckillVouch
             }
         });
     }
-    
+
     @Override
     protected void afterConsumeFailure(MessageExtend<SeckillVoucherMessage> message, Throwable throwable) {
         // 临时失败只记录并交给 Kafka 重试；取消补偿由 orderProcessor 统一决定。

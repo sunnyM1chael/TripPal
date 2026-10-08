@@ -94,7 +94,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Resource
     private IVoucherService voucherService;
-    
+
     @Resource
     private ISeckillVoucherService seckillVoucherService;
 
@@ -106,37 +106,37 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Resource
     private RedissonClient redissonClient;
-    
+
     @Resource
     private SnowflakeIdGenerator snowflakeIdGenerator;
-    
+
     @Resource
     private SeckillVoucherOperate seckillVoucherOperate;
-    
+
     @Resource
     private SeckillVoucherProducer seckillVoucherProducer;
-    
+
     @Resource
     private RedisCacheImpl redisCache;
-    
+
     @Resource
     private IVoucherOrderRouterService voucherOrderRouterService;
-    
+
     @Resource
     private IUserInfoService userInfoService;
-    
+
     @Resource
     private VoucherOrderMapper voucherOrderMapper;
-    
+
     @Resource
     private VoucherOrderRouterMapper voucherOrderRouterMapper;
-    
+
     @Resource
     private RedisVoucherData redisVoucherData;
-    
+
     @Resource
     private IVoucherReconcileLogService voucherReconcileLogService;
-    
+
 
     private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
 
@@ -177,8 +177,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return t;
         }
     }
-    
-    
+
+
     @PostConstruct
     private void init(){
         // 这是黑马点评的普通版本，升级版本中不再使用此方式
@@ -197,7 +197,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             SECKILL_ORDER_EXECUTOR.shutdownNow();
         }
     }
-    
+
     /***
      * 这是黑马点评的普通版本，升级版本中不再使用此方式
      */
@@ -314,7 +314,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         //return doSeckillVoucherV1(voucherId);
         return doSeckillVoucherV2(voucherId);
     }
-    
+
     public Result<Long> doSeckillVoucherV1(Long voucherId) {
         Long userId = UserHolder.getUser().getId();
         long orderId = snowflakeIdGenerator.nextId();
@@ -335,7 +335,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         // 4.返回订单id
         return Result.ok(orderId);
     }
-    
+
     public Result<Long> doSeckillVoucherV2(Long voucherId) {
         SeckillVoucherFullModel seckillVoucherFullModel = seckillVoucherService.queryByVoucherId(voucherId);
         seckillVoucherService.loadVoucherStock(voucherId);
@@ -379,12 +379,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 Boolean.FALSE
         );
         seckillVoucherProducer.sendPayload(
-                SpringUtil.getPrefixDistinctionName() + "-" + SECKILL_VOUCHER_TOPIC, 
+                SpringUtil.getPrefixDistinctionName() + "-" + SECKILL_VOUCHER_TOPIC,
                 seckillVoucherMessage);
-        
+
         return Result.ok(orderId);
     }
-    
+
     public void verifyUserLevel(SeckillVoucherFullModel seckillVoucherFullModel,Long userId){
         String allowedLevelsStr = seckillVoucherFullModel.getAllowedLevels();
         Integer minLevel = seckillVoucherFullModel.getMinLevel();
@@ -410,7 +410,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 }
             } catch (Exception parseEx) {
                 log.warn("allowedLevels 解析失败, voucherId={}, raw={}",
-                        seckillVoucherFullModel.getVoucherId(), 
+                        seckillVoucherFullModel.getVoucherId(),
                         allowedLevelsStr, parseEx);
             }
         }
@@ -422,12 +422,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
     }
 
-   
+
     private static class AudienceRule {
         public Set<Integer> allowedLevels;
         public Integer minLevel;
         public Set<String> allowedCities;
-        
+
         boolean hasLevelRule(){
             return (allowedLevels != null && !allowedLevels.isEmpty()) || minLevel != null;
         }
@@ -455,7 +455,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 // set stock = stock - 1
                 .setSql("stock = stock - 1")
                 // where id = ? and stock > 0
-                .eq("voucher_id", voucherOrder.getVoucherId()).gt("stock", 0) 
+                .eq("voucher_id", voucherOrder.getVoucherId()).gt("stock", 0)
                 .update();
         if (!success) {
             // 扣减失败
@@ -465,8 +465,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         // 7.创建订单
         save(voucherOrder);
     }
-    
-    
+
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean createVoucherOrderV2(MessageExtend<SeckillVoucherMessage> message) {
@@ -510,7 +510,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         redisCache.set(RedisKeyBuild.createRedisKey(
                 RedisKeyManage.DB_SECKILL_ORDER_KEY,messageBody.getOrderId()),
                 voucherOrder,
-                60, 
+                60,
                 TimeUnit.SECONDS
         );
         boolean savedLog = voucherReconcileLogService.saveReconcileLog(
@@ -524,18 +524,18 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         return true;
     }
-    
+
     @Override
     public Long getSeckillVoucherOrder(GetVoucherOrderDto getVoucherOrderDto) {
-        VoucherOrder voucherOrder = 
+        VoucherOrder voucherOrder =
                 redisCache.get(RedisKeyBuild.createRedisKey(
-                        RedisKeyManage.DB_SECKILL_ORDER_KEY, 
-                        getVoucherOrderDto.getOrderId()), 
+                        RedisKeyManage.DB_SECKILL_ORDER_KEY,
+                        getVoucherOrderDto.getOrderId()),
                         VoucherOrder.class);
         if (Objects.nonNull(voucherOrder)) {
             return voucherOrder.getId();
         }
-        VoucherOrderRouter voucherOrderRouter = 
+        VoucherOrderRouter voucherOrderRouter =
                 voucherOrderRouterService.lambdaQuery()
                         .eq(VoucherOrderRouter::getOrderId, getVoucherOrderDto.getOrderId())
                         .one();
@@ -544,7 +544,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         return null;
     }
-    
+
     @Override
     public Long getSeckillVoucherOrderIdByVoucherId(GetVoucherOrderByVoucherIdDto getVoucherOrderByVoucherIdDto) {
         VoucherOrder voucherOrder = lambdaQuery()
@@ -557,7 +557,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         return null;
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean cancel(CancelVoucherOrderDto cancelVoucherOrderDto) {
@@ -593,9 +593,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         voucherReconcileLogDto.setLogType(LogType.RESTORE.getCode());
         voucherReconcileLogDto.setBusinessType( BusinessType.CANCEL.getCode());
         boolean saveReconcileLogResult = voucherReconcileLogService.saveReconcileLog(voucherReconcileLogDto);
-        
+
         boolean rollbackStockResult = seckillVoucherService.rollbackStock(cancelVoucherOrderDto.getVoucherId());
-        
+
         Boolean result = updateResult && saveReconcileLogResult && rollbackStockResult;
         if (result) {
             redisVoucherData.rollbackRedisVoucherData(
@@ -608,7 +608,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     1,
                     seckillVoucher.getStock() + 1
             );
-            redisCache.delForHash(RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_SUBSCRIBE_STATUS_TAG_KEY, 
+            redisCache.delForHash(RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_SUBSCRIBE_STATUS_TAG_KEY,
                     cancelVoucherOrderDto.getVoucherId()),
                     String.valueOf(voucherOrder.getUserId()));
             Voucher voucher = voucherService.getById(voucherOrder.getVoucherId());
@@ -621,10 +621,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 );
                 redisCache.incrementScoreForSortedSet(dailyKey, String.valueOf(voucherOrder.getUserId()), -1.0);
             }
-            
+
             try {
                 autoIssueVoucherToEarliestSubscriber(
-                        voucherOrder.getVoucherId(), 
+                        voucherOrder.getVoucherId(),
                         voucherOrder.getUserId()
                 );
             } catch (Exception e) {
@@ -633,13 +633,13 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         return result;
     }
-    
+
     @Override
     public boolean autoIssueVoucherToEarliestSubscriber(final Long voucherId, final Long excludeUserId) {
         SeckillVoucherFullModel seckillVoucherFullModel = seckillVoucherService.queryByVoucherId(voucherId);
-        if (Objects.isNull(seckillVoucherFullModel) 
-                || 
-                Objects.isNull(seckillVoucherFullModel.getBeginTime()) 
+        if (Objects.isNull(seckillVoucherFullModel)
+                ||
+                Objects.isNull(seckillVoucherFullModel.getBeginTime())
                 ||
                 Objects.isNull(seckillVoucherFullModel.getEndTime())) {
             return false;
@@ -651,11 +651,11 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         return issueToCandidate(voucherId, candidateUserIdStr, seckillVoucherFullModel);
     }
-    
+
     private String findEarliestCandidate(final Long voucherId, final Long excludeUserId) {
         RedisKeyBuild subscribeZSetKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_SUBSCRIBE_ZSET_TAG_KEY, voucherId);
         RedisKeyBuild purchasedSetKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_USER_TAG_KEY, voucherId);
-        
+
         final long pageCount = 1L;
         long offset = 0L;
         while (true) {
@@ -692,9 +692,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return uidStr;
         }
     }
-    
-    private boolean issueToCandidate(final Long voucherId, 
-                                     final String candidateUserIdStr, 
+
+    private boolean issueToCandidate(final Long voucherId,
+                                     final String candidateUserIdStr,
                                      final SeckillVoucherFullModel seckillVoucherFullModel) {
         Long candidateUserId = Long.valueOf(candidateUserIdStr);
         try {
@@ -728,7 +728,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         );
         return true;
     }
-    
+
     private List<String> buildSeckillKeys(final Long voucherId) {
         String stockKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_STOCK_TAG_KEY, voucherId).getRelKey();
         String userKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_USER_TAG_KEY, voucherId).getRelKey();
@@ -736,7 +736,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         String ownerKey = RedisKeyBuild.createRedisKey(RedisKeyManage.SECKILL_RESERVATION_OWNER_TAG_KEY, voucherId).getRelKey();
         return ListUtil.of(stockKey, userKey, traceKey, ownerKey);
     }
-    
+
     private String[] buildSeckillArgs(final Long voucherId,
                                       final String userIdStr,
                                       final SeckillVoucherFullModel seckillVoucherFullModel,
@@ -754,7 +754,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         args[8] = String.valueOf(computeTtlSeconds(seckillVoucherFullModel));
         return args;
     }
-    
+
     private long computeTtlSeconds(final SeckillVoucherFullModel seckillVoucherFullModel) {
         long secondsUntilEnd = Duration.between(LocalDateTimeUtil.now(), seckillVoucherFullModel.getEndTime()).getSeconds();
         return Math.max(1L, secondsUntilEnd + Duration.ofDays(1).getSeconds());
