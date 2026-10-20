@@ -16,13 +16,14 @@ from app.core.exceptions import (
     LLMTimeoutError,
 )
 from app.core.logging import get_logger
-from app.domain.models import ChatMessage
+from app.domain.models import ChatMessage, ToolCall
 
 
 class _ResponseMessage(BaseModel):
     role: Literal["assistant"]
     content: str | None = None
     refusal: str | None = None
+    tool_calls: list[ToolCall] | None = None
 
 
 class _Choice(BaseModel):
@@ -72,7 +73,7 @@ class OpenAICompatibleChatModel:
         self._max_attempts = max_attempts
         self._logger = get_logger("llm.openai_compatible")
 
-    async def ainvoke(self, messages: list[ChatMessage]) -> ChatMessage:
+    async def ainvoke(self, messages: list[ChatMessage], *, tools: list[dict] | None = None) -> ChatMessage:
         started = perf_counter()
         status_code: int | None = None
         try:
@@ -83,7 +84,7 @@ class OpenAICompatibleChatModel:
                 reraise=True,
             ):
                 with attempt:
-                    response = await self._send(messages)
+                    response = await self._send(messages, tools=tools)
                     status_code = response.status_code
             return self._parse(response)
         except _RetryableProviderError as exc:
@@ -102,11 +103,14 @@ class OpenAICompatibleChatModel:
                 latency_ms=round((perf_counter() - started) * 1000, 2),
             )
 
-    async def _send(self, messages: list[ChatMessage]) -> httpx.Response:
+    async def _send(self, messages: list[ChatMessage], *, tools: list[dict] | None = None) -> httpx.Response:
         payload = {
             "model": self._model,
-            "messages": [message.model_dump() for message in messages],
+            "messages": [message.model_dump(exclude_none=True) for message in messages],
         }
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
         try:
             response = await self._client.post(
                 "chat/completions",
@@ -142,6 +146,6 @@ class OpenAICompatibleChatModel:
             raise LLMProtocolError("LLM provider returned no choices")
         message = completion.choices[0].message
         content = message.content if message.content is not None else message.refusal
-        if content is None:
+        if content is None and not message.tool_calls:
             raise LLMProtocolError("LLM provider returned no text content")
-        return ChatMessage(role="assistant", content=content)
+        return ChatMessage(role="assistant", content=content or "", tool_calls=message.tool_calls)

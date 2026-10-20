@@ -19,6 +19,27 @@ class SampleData(BaseModel):
     name: str
 
 
+@pytest.mark.parametrize("total,expected", [("", None), (None, None), ("12", 12), (0, 0)])
+def test_java_serialized_total_is_accepted(total, expected):
+    result = HmdpClient._parse(httpx.Response(200, json={
+        "success": True, "errorMsg": "", "data": {"id": "123"}, "total": total}), dict)
+    assert result == {"id": "123"}
+    from app.integrations.hmdp.models import HmdpResponse
+    assert HmdpResponse[dict](success=True, total=total).total == expected
+
+
+def test_java_empty_total_does_not_mask_business_errors():
+    with pytest.raises(UpstreamBusinessError):
+        HmdpClient._parse(httpx.Response(200, json={
+            "success": False, "errorMsg": "not logged in", "data": None, "total": ""}), dict)
+
+
+def test_invalid_nonempty_total_remains_protocol_error():
+    with pytest.raises(UpstreamProtocolError) as failure:
+        HmdpClient._parse(httpx.Response(200, json={"success": True, "total": "invalid"}), dict)
+    assert failure.value.details == {"invalid_fields": ["total"], "response_kind": "json"}
+
+
 def make_client(handler: Callable[[httpx.Request], httpx.Response], attempts: int = 1) -> tuple[HmdpClient, httpx.AsyncClient]:
     async_client = httpx.AsyncClient(
         base_url="http://hmdp.test",

@@ -9,6 +9,9 @@ from app.services.agent import AgentService
 from app.services.runtime import AgentRuntime
 from app.tools.executor import ToolExecutor
 from app.tools.registry import ToolRegistry
+from app.integrations.amap import AmapClient
+from app.memory.repository import ConversationRepository
+from app.integrations.hmdp.preferences import PreferenceGateway
 
 
 @dataclass(slots=True)
@@ -22,4 +25,7 @@ class ApplicationContainer:
     tool_executor: ToolExecutor
     runtime: AgentRuntime
     agent_service: AgentService
+    memory: ConversationRepository
+    preferences: PreferenceGateway
+    maps: AmapClient
     initialized: bool = True

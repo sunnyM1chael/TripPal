@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>旅伴 · 旅行助手</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101923;color:#e2eaf2;font:16px/1.65 system-ui,sans-serif}main{max-width:920px;margin:auto;padding:30px 22px}h1{font-size:30px;margin:0}p{color:#a9bccd}header{border-bottom:1px solid #344553;padding-bottom:18px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}button{border:1px solid #467263;background:#193f38;color:#d8f7e8;padding:10px 16px;border-radius:10px;cursor:pointer}button:disabled{opacity:.5;cursor:wait}#chat{min-height:260px}.bubble{white-space:pre-wrap;padding:18px;background:#1a2b3b;border-radius:14px;margin:14px 0;overflow-wrap:anywhere}.user{background:#23453e;margin-left:12%}textarea{width:100%;min-height:96px;background:#182735;color:#fff;border:1px solid #516675;border-radius:12px;padding:14px;font:inherit}form>div{display:flex;justify-content:space-between;margin-top:10px}details{font-size:13px;color:#adc2d2}pre{white-space:pre-wrap;overflow-wrap:anywhere}.hint{font-size:13px}a{color:#8bd6b5}
+</style>
+<main>
+<header><h1>旅伴 <span style="color:#8bd6b5">/ 旅行助手</span></h1><p>找一家合适的店，安排一次轻松的出行。</p><a href="/docs">接口文档</a></header>
+<div class="chips"><button type="button">看看有哪些商户分类</button><button type="button">帮我找人均100元以内的火锅店</button><button type="button">帮我安排两个人的一日探店行程</button></div>
+<div id="chat" aria-live="polite"><div class="bubble">你好！告诉我你想吃什么、预算和目的地，我会先查询商户数据，再帮你挑选。也可以查询某家店的优惠券。行程是探店建议，暂不提供实时导航。</div></div>
+<form id="form"><label for="prompt">你的出行需求</label><textarea id="prompt" maxlength="4000" required placeholder="例如：找一家火锅店，人均不超过100元，再看看有没有优惠券"></textarea><div><button id="clear" type="button">新对话</button><button id="send" type="submit">发送 →</button></div></form>
+<p class="hint">对话与明确保存的偏好保存在服务端。历史恢复与记忆管理请使用 Vue App 内的 AI 旅伴。价格和优惠券以商户实际信息为准。</p>
+</main>
+<script>
+let conversationId=null;const history=[];const chat=document.querySelector('#chat'),input=document.querySelector('#prompt'),send=document.querySelector('#send'),clear=document.querySelector('#clear');
+function bubble(text,kind=''){const el=document.createElement('div');el.className='bubble '+kind;el.textContent=text;chat.append(el);el.scrollIntoView({behavior:'smooth',block:'end'});return el;}
+document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{input.value=b.textContent;input.focus();});
+clear.onclick=()=>{conversationId=null;history.length=0;chat.replaceChildren();bubble('已开始新对话。你想去哪里、吃些什么？');};
+document.querySelector('#form').onsubmit=async e=>{e.preventDefault();const prompt=input.value.trim();if(!prompt||send.disabled)return;bubble(prompt,'user');input.value='';send.disabled=true;clear.disabled=true;const pending=bubble('正在查询和整理建议…');try{const r=await fetch('/api/v1/travel/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,conversation_id:conversationId})});const data=await r.json();if(!r.ok)throw Error(typeof data.message==='string'?data.message:'请求失败，请检查服务配置后重试。');conversationId=data.conversation_id||conversationId;pending.textContent=data.output;if(data.mode==='live'){history.push({role:'user',content:prompt},{role:'assistant',content:data.output.slice(0,4000)});}if(data.tool_results?.length){const d=document.createElement('details'),s=document.createElement('summary'),p=document.createElement('pre');s.textContent='查看本次查询依据';p.textContent=JSON.stringify(data.tool_results,null,2);d.append(s,p);pending.append(d);}}catch(err){pending.textContent=err.message;}finally{send.disabled=false;clear.disabled=false;input.focus();}};
+</script>
+</html>
+

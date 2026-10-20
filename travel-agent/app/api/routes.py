@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import FileResponse, RedirectResponse
 
 from app.api.dependencies import get_agent_service, get_container
 from app.api.models import AgentRunRequest, AgentRunResponse, StatusResponse
@@ -6,9 +9,21 @@ from app.container import ApplicationContainer
 from app.core.context import get_request_context
 from app.domain.models import AgentExecutionRequest
 from app.services.agent import AgentService
+from app.api.travel_routes import router as travel_router
 
 
 router = APIRouter()
+router.include_router(travel_router)
+
+
+@router.get("/", include_in_schema=False)
+async def home():
+    return RedirectResponse(url="/assistant")
+
+
+@router.get("/assistant", include_in_schema=False)
+async def assistant_page():
+    return FileResponse(Path(__file__).parent.parent / "static" / "assistant.html")
 
 
 @router.get("/health", response_model=StatusResponse, tags=["platform"])

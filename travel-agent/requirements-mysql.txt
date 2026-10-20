@@ -1,0 +1,2 @@
+# Optional MySQL backend driver. Core/SQLite installs continue to use uv.lock.
+PyMySQL[rsa]>=1.1.1,<2

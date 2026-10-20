@@ -11,3 +11,5 @@ dist/
 build/
 *.egg-info/
 server.*.log
+data/
+*.sqlite3*

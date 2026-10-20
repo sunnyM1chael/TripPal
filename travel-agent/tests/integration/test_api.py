@@ -1,12 +1,18 @@
 from fastapi.testclient import TestClient
+from contextlib import contextmanager
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from app.core.config import Settings
 from app.main import create_app
 
 
-def client() -> TestClient:
-    app = create_app(Settings(app_env="test", _env_file=None))
-    return TestClient(app)
+@contextmanager
+def client():
+    with TemporaryDirectory() as directory:
+        app = create_app(Settings(app_env="test", memory_db_path=Path(directory) / "test.sqlite3", _env_file=None))
+        with TestClient(app) as test_client:
+            yield test_client
 
 
 def test_health() -> None:

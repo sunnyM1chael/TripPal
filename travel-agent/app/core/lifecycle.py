@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
+import asyncio
 
 import httpx
 from fastapi import FastAPI
@@ -16,6 +17,9 @@ from app.services.runtime import AgentRuntime
 from app.tools.executor import ToolExecutor
 from app.tools.models import ToolDefinition
 from app.tools.registry import ToolRegistry
+from app.integrations.amap import AmapClient
+from app.memory.factory import create_memory
+from app.integrations.hmdp.preferences import PreferenceGateway
 
 
 async def echo(arguments: dict[str, Any]) -> Any:
@@ -26,7 +30,10 @@ def create_lifespan(settings: Settings):
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         instrumentation = StructuredLogInstrumentation()
+        memory = create_memory(settings)
+        await asyncio.to_thread(memory.initialize, settings.memory_retention_days)
         hmdp_http_client = httpx.AsyncClient(base_url=str(settings.hmdp_base_url))
+        maps_http_client = httpx.AsyncClient(base_url="https://restapi.amap.com", follow_redirects=False)
         llm_http_client = None
         provider = settings.llm_provider.lower().replace("-", "_")
         if provider in {"openai", "openai_compatible"}:
@@ -46,12 +53,18 @@ def create_lifespan(settings: Settings):
             tool_executor=ToolExecutor(tools, instrumentation),
             runtime=runtime,
             agent_service=AgentService(runtime),
+            memory=memory,
+            preferences=PreferenceGateway(HmdpClient(hmdp_http_client, timeout=settings.hmdp_timeout)),
+            maps=AmapClient(maps_http_client, settings.amap_api_key.get_secret_value() if settings.amap_api_key else None,
+                            settings.amap_timeout),
         )
         try:
             yield
         finally:
             app.state.container.initialized = False
+            await asyncio.to_thread(memory.close)
             await hmdp_http_client.aclose()
+            await maps_http_client.aclose()
             if llm_http_client is not None:
                 await llm_http_client.aclose()
 

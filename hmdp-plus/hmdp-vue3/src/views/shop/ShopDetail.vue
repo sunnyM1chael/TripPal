@@ -1,10 +1,26 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ArrowLeft, ArrowRight, Location, Timer } from '@element-plus/icons-vue'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Location,
+  Timer,
+  MagicStick
+} from '@element-plus/icons-vue'
 import { ElLoading } from 'element-plus'
 import { getShopById } from '@/api/shop'
-import { getVoucherList, issueSeckillAccessToken, seckillVoucher, getSeckillOrderId, getVoucherOrderIdByVoucherId, cancelVoucherOrder, subscribeVoucher, unsubscribeVoucher, getSubscribeStatusBatch } from '@/api/voucher'
+import {
+  getVoucherList,
+  issueSeckillAccessToken,
+  seckillVoucher,
+  getSeckillOrderId,
+  getVoucherOrderIdByVoucherId,
+  cancelVoucherOrder,
+  subscribeVoucher,
+  unsubscribeVoucher,
+  getSubscribeStatusBatch
+} from '@/api/voucher'
 import { useUserStore } from '@/stores'
 
 const router = useRouter()
@@ -80,7 +96,10 @@ const isSubscribeSuccess = (voucherId) => getSubscribeCode(voucherId) === 2
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const pollSeckillOrder = async (orderId, { delay = 800, timeoutMs = 11000 } = {}) => {
+const pollSeckillOrder = async (
+  orderId,
+  { delay = 800, timeoutMs = 11000 } = {}
+) => {
   const end = Date.now() + timeoutMs
   while (Date.now() < end) {
     try {
@@ -225,7 +244,10 @@ const seckill = async (v) => {
     const res = await seckillVoucher(v.id, accessToken)
     // 仅在秒杀接口返回成功时才进行轮询确认订单
     if (res && res.success) {
-      const order = await pollSeckillOrder(String(res.data), { delay: 800, timeoutMs: 11000 })
+      const order = await pollSeckillOrder(String(res.data), {
+        delay: 800,
+        timeoutMs: 11000
+      })
       // 成功拿到订单后，再次查询该券的已购状态并置灰按钮
       if (order) {
         try {
@@ -400,6 +422,23 @@ onMounted(() => {
       </div>
     </div>
 
+    <button
+      type="button"
+      class="ask-travel"
+      @click="
+        router.push({
+          path: '/travel',
+          query: { shopId: String(route.params.id) }
+        })
+      "
+    >
+      <el-icon><MagicStick /></el-icon
+      ><span
+        ><strong>让 AI 旅伴帮你看看这家店</strong
+        ><small>了解人均消费、营业时间和优惠券</small></span
+      ><el-icon><ArrowRight /></el-icon>
+    </button>
+
     <div class="shop-divider"></div>
 
     <!-- 营业时间 -->
@@ -441,7 +480,9 @@ onMounted(() => {
           <div v-if="v.type" class="seckill-box">
             <div
               class="voucher-btn"
-              :class="{ 'disable-btn': isNotBegin(v) || v.stock < 1 || isPurchased(v.id) }"
+              :class="{
+                'disable-btn': isNotBegin(v) || v.stock < 1 || isPurchased(v.id)
+              }"
               @click="seckill(v)"
             >
               限时抢购
@@ -452,16 +493,27 @@ onMounted(() => {
             <div class="seckill-time">{{ formatTime(v) }}</div>
             <div v-if="isPurchased(v.id)" class="seckill-status">
               <span class="purchased-tag">已购</span>
-              <span class="cancel-link" @click="cancelVoucher(v)">取消领取</span>
+              <span class="cancel-link" @click="cancelVoucher(v)"
+                >取消领取</span
+              >
             </div>
             <!-- 库存为 0 且未购买时，展示订阅到券提醒 -->
-            <div v-else-if="Number(v.stock) < 1 && !isPurchased(v.id)" class="subscribe-box">
+            <div
+              v-else-if="Number(v.stock) < 1 && !isPurchased(v.id)"
+              class="subscribe-box"
+            >
               <div v-if="isSubscribed(v.id)" class="subscribe-status">
                 <span class="subscribed-tag">已订阅到券提醒</span>
-                <span class="cancel-subscribe" @click="unsubscribeFromVoucher(v)">取消订阅</span>
+                <span
+                  class="cancel-subscribe"
+                  @click="unsubscribeFromVoucher(v)"
+                  >取消订阅</span
+                >
               </div>
               <div v-else class="subscribe-status">
-                <span class="subscribe-link" @click="subscribeToVoucher(v)">到券提醒</span>
+                <span class="subscribe-link" @click="subscribeToVoucher(v)"
+                  >到券提醒</span
+                >
               </div>
             </div>
           </div>
@@ -553,6 +605,39 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ask-travel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 30px);
+  margin: 14px 15px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid #eed8ce;
+  border-radius: 12px;
+  color: #b27d83;
+  background: linear-gradient(105deg, #fff2e8, #f8f0fa);
+  cursor: pointer;
+  font-family: inherit;
+}
+.ask-travel > .el-icon:first-child {
+  font-size: 24px;
+}
+.ask-travel > span {
+  flex: 1;
+}
+.ask-travel strong {
+  display: block;
+  color: #87616a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ask-travel small {
+  display: block;
+  color: #aa929b;
+  font-size: 11px;
+  margin-top: 5px;
+}
 .shop-detail-container {
   min-height: 100vh;
   background-color: #f5f5f5;

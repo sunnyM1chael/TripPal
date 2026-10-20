@@ -24,6 +24,16 @@ def test_settings_reject_invalid_timeout() -> None:
         Settings(hmdp_timeout=0, _env_file=None)
 
 
+def test_mysql_configuration_requires_credentials_and_does_not_fallback():
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, memory_backend="mysql", memory_mysql_user=None, memory_mysql_password=None)
+    settings = Settings(_env_file=None, memory_backend="mysql", memory_mysql_user="test", memory_mysql_password="secret")
+    from app.memory.factory import create_memory
+    from app.memory.mysql import MySQLMemoryStore
+    assert isinstance(create_memory(settings), MySQLMemoryStore)
+    assert "secret" not in repr(settings)
+
+
 @pytest.mark.parametrize("missing", ["base_url", "api_key"])
 def test_openai_compatible_settings_require_credentials(missing: str) -> None:
     values = {

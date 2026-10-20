@@ -49,6 +49,13 @@ export default defineConfig({
   // },
   server: {
     proxy: {
+      '/agent-api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        timeout: 130000,
+        proxyTimeout: 130000,
+        rewrite: (path) => path.replace(/^\/agent-api/, '')
+      },
       '/api': {
         target: 'http://localhost:8085',
         changeOrigin: true,

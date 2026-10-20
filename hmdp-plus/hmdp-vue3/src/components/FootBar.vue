@@ -1,6 +1,6 @@
 <script setup>
 import router from '@/router'
-import { House, Location, ChatDotRound, User } from '@element-plus/icons-vue'
+import { House, MagicStick, ChatDotRound, User } from '@element-plus/icons-vue'
 defineProps({
   activeBtn: {
     type: Number,
@@ -14,6 +14,8 @@ const toPage = (i) => {
     router.push('/InfoHtml')
   } else if (i === 1) {
     router.push('/')
+  } else if (i === 2) {
+    router.push('/travel')
   }
 }
 </script>
@@ -25,7 +27,9 @@ const toPage = (i) => {
       :class="{ active: activeBtn === 1 }"
       @click="toPage(1)"
     >
-      <div class="foot-view"><el-icon><House /></el-icon></div>
+      <div class="foot-view">
+        <el-icon><House /></el-icon>
+      </div>
       <div class="foot-text">首页</div>
     </div>
     <div
@@ -33,8 +37,10 @@ const toPage = (i) => {
       :class="{ active: activeBtn === 2 }"
       @click="toPage(2)"
     >
-      <div class="foot-view"><el-icon><Location /></el-icon></div>
-      <div class="foot-text">地图</div>
+      <div class="foot-view">
+        <el-icon><MagicStick /></el-icon>
+      </div>
+      <div class="foot-text">AI 旅伴</div>
     </div>
     <div class="foot-box" @click="toPage(0)">
       <img class="add-btn" src="../assets/imgs/add.png" alt="" />
@@ -44,7 +50,9 @@ const toPage = (i) => {
       :class="{ active: activeBtn === 3 }"
       @click="toPage(3)"
     >
-      <div class="foot-view"><el-icon><ChatDotRound /></el-icon></div>
+      <div class="foot-view">
+        <el-icon><ChatDotRound /></el-icon>
+      </div>
       <div class="foot-text">消息</div>
     </div>
     <div
@@ -52,14 +60,16 @@ const toPage = (i) => {
       :class="{ active: activeBtn === 4 }"
       @click="toPage(4)"
     >
-      <div class="foot-view"><el-icon><User /></el-icon></div>
+      <div class="foot-view">
+        <el-icon><User /></el-icon>
+      </div>
       <div class="foot-text">我的</div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.foot-view :deep(.el-icon){
+.foot-view :deep(.el-icon) {
   font-size: 22px;
 }
 </style>

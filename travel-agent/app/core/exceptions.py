@@ -68,3 +68,43 @@ class UpstreamBusinessError(IntegrationError):
 
 class UpstreamProtocolError(IntegrationError):
     code = "upstream_protocol_error"
+
+
+class AuthenticationError(AppError):
+    code = "authentication_required"
+    status_code = 401
+
+
+class NotFoundError(AppError):
+    code = "not_found"
+    status_code = 404
+
+
+class ConversationBusyError(AppError):
+    code = "conversation_busy"
+    status_code = 409
+
+
+class RequestLimitError(AppError):
+    code = "request_limit"
+    status_code = 429
+
+
+class MapError(AppError):
+    code = "map_unavailable"
+    status_code = 502
+
+
+class MapNotConfiguredError(MapError):
+    code = "map_not_configured"
+    status_code = 503
+
+
+class MemoryUnavailableError(AppError):
+    code = "memory_unavailable"
+    status_code = 503
+
+
+class PreferenceClearPendingError(AppError):
+    code = "preference_clear_pending"
+    status_code = 502

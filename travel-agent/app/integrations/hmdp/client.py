@@ -76,6 +76,14 @@ class HmdpClient:
             raise UpstreamTimeoutError("HMDP request timed out") from exc
         except _RetryableTransportError as exc:
             raise IntegrationError("HMDP connection failed") from exc
+        except IntegrationError as exc:
+            self._logger.warning(
+                "integration_request_failed", method=method, path=path,
+                error_code=exc.code, upstream_status=exc.details.get("status_code"),
+                invalid_fields=exc.details.get("invalid_fields", []),
+                response_kind=exc.details.get("response_kind"),
+            )
+            raise
         finally:
             self._logger.info(
                 "integration_request_complete",
@@ -124,8 +132,15 @@ class HmdpClient:
         try:
             payload = response.json()
             envelope = TypeAdapter(HmdpResponse[response_type]).validate_python(payload)
-        except (ValueError, ValidationError, TypeError) as exc:
-            raise UpstreamProtocolError("HMDP returned an invalid response envelope") from exc
+        except ValidationError as exc:
+            # Log only known envelope field names, never input values or body content.
+            fields = sorted({str(error["loc"][0]) for error in exc.errors()
+                             if error["loc"] and error["loc"][0] in {"success", "data", "total", "errorMsg"}})
+            raise UpstreamProtocolError("HMDP returned an invalid response envelope",
+                                        details={"invalid_fields": fields, "response_kind": "json"}) from exc
+        except (ValueError, TypeError) as exc:
+            raise UpstreamProtocolError("HMDP returned an invalid response envelope",
+                                        details={"response_kind": "invalid_json"}) from exc
         if not envelope.success:
             raise UpstreamBusinessError(envelope.errorMsg or "HMDP business operation failed")
         return envelope.data

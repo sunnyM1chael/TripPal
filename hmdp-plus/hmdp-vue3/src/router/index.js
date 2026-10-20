@@ -23,6 +23,16 @@ const router = createRouter({
       component: () => import('@/views/index.vue')
     },
     {
+      path: '/travel/map',
+      name: 'TravelMap',
+      component: () => import('@/views/travel/TravelMap.vue')
+    },
+    {
+      path: '/travel',
+      name: 'TravelAssistant',
+      component: () => import('@/views/travel/TravelAssistant.vue')
+    },
+    {
       path: '/shopList',
       component: () => import('@/views/shop/ShopList.vue')
     },

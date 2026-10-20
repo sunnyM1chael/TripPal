@@ -1,0 +1,2 @@
+# Optional local MCP server; isolated from the normal web service dependency set.
+mcp==1.30.0

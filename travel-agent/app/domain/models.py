@@ -3,9 +3,22 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
+class ToolFunction(BaseModel):
+    name: str
+    arguments: str
+
+
+class ToolCall(BaseModel):
+    id: str
+    type: Literal["function"] = "function"
+    function: ToolFunction
+
+
 class ChatMessage(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
     content: str
+    tool_calls: list[ToolCall] | None = None
+    tool_call_id: str | None = None
 
 
 class AgentExecutionRequest(BaseModel):
