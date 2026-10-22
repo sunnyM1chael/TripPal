@@ -292,7 +292,7 @@ onMounted(() => {
 }
 
 .shop-avg {
-  color: #f63;
+  color: var(--tp-muted);
   font-size: 14px;
 }
 

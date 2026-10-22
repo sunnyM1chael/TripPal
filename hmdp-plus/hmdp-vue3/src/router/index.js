@@ -4,6 +4,16 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/workshop',
+      name: 'CityWorkshop',
+      component: () => import('@/views/workshop/CityWorkshop.vue')
+    },
+    {
+      path: '/messages',
+      name: 'MessageCenter',
+      component: () => import('@/views/travel/MessageCenter.vue')
+    },
+    {
       path: '/',
       redirect: '/index'
     },
@@ -21,6 +31,11 @@ const router = createRouter({
       path: '/index',
       name: 'indexPage',
       component: () => import('@/views/index.vue')
+    },
+    {
+      path: '/travel/itineraries',
+      name: 'TravelItineraries',
+      component: () => import('@/views/travel/TravelItineraries.vue')
     },
     {
       path: '/travel/map',

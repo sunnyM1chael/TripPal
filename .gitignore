@@ -1,6 +1,7 @@
 # IDE and OS files
 .idea/
 .vscode/
+.codex/
 *.iml
 .DS_Store
 Thumbs.db
@@ -13,6 +14,10 @@ Thumbs.db
 *.key
 *.p12
 *.pfx
+
+# Keep machine-specific Java credentials locally; commit sanitized examples.
+/hmdp-plus/hmdp-core-service/src/main/resources/application.yml
+/hmdp-plus/hmdp-core-service/src/main/resources/shardingsphere.yaml
 
 # Java build output and runtime files
 **/target/
@@ -34,4 +39,7 @@ Thumbs.db
 **/htmlcov/
 **/build/
 **/*.egg-info/
+
+# Local patch exports are deliverables, not application source.
+/TripPal-city-workshop.patch
 

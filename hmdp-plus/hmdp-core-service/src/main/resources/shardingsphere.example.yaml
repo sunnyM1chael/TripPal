@@ -4,7 +4,7 @@ dataSources:
     driverClassName: com.mysql.cj.jdbc.Driver
     jdbcUrl: jdbc:mysql://127.0.0.1:3306/hmdp_1?useUnicode=true&characterEncoding=UTF-8&rewriteBatchedStatements=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai&autoReconnect=true&allowPublicKeyRetrieval=true&useSSL=false
     username: root
-    password: 2818
+    password: "" # Configure locally; do not commit credentials.
     hikari:
       # 连接池配置优化
       minimum-idle: 30                    # 最小空闲连接数(提升至30)
@@ -19,7 +19,7 @@ dataSources:
     driverClassName: com.mysql.cj.jdbc.Driver
     jdbcUrl: jdbc:mysql://127.0.0.1:3306/hmdp_1?useUnicode=true&characterEncoding=UTF-8&rewriteBatchedStatements=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai&autoReconnect=true&allowPublicKeyRetrieval=true&useSSL=false
     username: root
-    password: 2818
+    password: "" # Configure locally; do not commit credentials.
     hikari:
       # 连接池配置优化
       minimum-idle: 30                    # 最小空闲连接数(提升至30)
@@ -33,6 +33,14 @@ dataSources:
 rules:
   - !SHARDING
     tables:
+      tb_city_work:
+        actualDataNodes: ds_0.tb_city_work
+      tb_city_save:
+        actualDataNodes: ds_0.tb_city_save
+      tb_city_trip:
+        actualDataNodes: ds_0.tb_city_trip
+      tb_city_feedback:
+        actualDataNodes: ds_0.tb_city_feedback
       tb_travel_preference:
         actualDataNodes: ds_${0..1}.tb_travel_preference_${0..1}
         databaseStrategy:

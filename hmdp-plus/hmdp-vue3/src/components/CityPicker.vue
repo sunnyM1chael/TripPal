@@ -109,7 +109,7 @@ function select(city) {
 .city-picker {
   max-width: 620px;
   margin: auto;
-  color: #4b414c;
+  color: var(--tp-ink);
 }
 .city-search {
   display: flex;
@@ -118,13 +118,13 @@ function select(city) {
 .city-search input {
   min-width: 0;
   flex: 1;
-  border: 1px solid #e7dce1;
+  border: 1px solid var(--tp-line);
   border-radius: 10px;
   padding: 12px;
   font-size: 14px;
 }
 .city-search button {
-  background: #e98665;
+  background: var(--tp-muted);
   color: white;
   border: 0;
   border-radius: 10px;
@@ -133,7 +133,7 @@ function select(city) {
 h3 {
   font-size: 13px;
   margin-top: 24px;
-  color: #8c7b86;
+  color: var(--tp-muted);
 }
 .popular {
   display: flex;
@@ -141,9 +141,9 @@ h3 {
   flex-wrap: wrap;
 }
 .popular button {
-  border: 1px solid #eee1dd;
-  background: #fff7f1;
-  color: #8b6253;
+  border: 1px solid var(--tp-line);
+  background: var(--tp-surface-soft);
+  color: var(--tp-muted);
   border-radius: 8px;
   padding: 10px 17px;
   cursor: pointer;
@@ -161,14 +161,14 @@ h3 {
 }
 .city-result span {
   font-size: 11px;
-  color: #a292a0;
+  color: var(--tp-muted);
 }
 .city-error {
   color: #b06458;
   line-height: 1.7;
 }
 .city-help {
-  color: #a398a0;
+  color: var(--tp-muted);
   font-size: 11px;
   line-height: 1.7;
   margin-top: 22px;

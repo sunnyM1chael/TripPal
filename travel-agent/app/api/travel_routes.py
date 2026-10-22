@@ -39,8 +39,12 @@ async def limited_owner(request: Request, owner: str = Depends(travel_identity))
 async def travel_chat(payload: TravelRequest, request: Request, owner: str = Depends(limited_owner),
                       container: ApplicationContainer = Depends(get_container)):
     remember_allowed = may_remember(payload.prompt)
+    if container.itineraries:
+        await asyncio.to_thread(container.itineraries.store.check_ready)
     tools = TravelTools(container.hmdp_client, request.headers.get("authorization"), maps=container.maps,
-                        memory=container.memory, preferences=container.preferences, owner=owner, remember_allowed=remember_allowed)
+                        memory=container.memory, preferences=container.preferences, owner=owner, remember_allowed=remember_allowed,
+                        itineraries=container.itineraries, itinerary_id=str(payload.itinerary_id) if payload.itinerary_id else None,
+                        subscriptions=container.subscriptions)
     if container.settings.llm_provider.lower() == "fake":
         return await run_travel(container.llm, tools, payload, fake=True)
     conversation_id, lease = await asyncio.to_thread(container.memory.begin, owner,
@@ -57,6 +61,9 @@ async def travel_chat(payload: TravelRequest, request: Request, owner: str = Dep
         memory_context = {"preferences": preferences, "task_summary": conversation.get("summary", []), "past_conversations": recall,
                           "last_tool_observations": json_bounded(observations),
                           "notice": "历史商户价格与路线可能过期，需要重新查证；当前要求优先于长期偏好。"}
+        if payload.itinerary_id:
+            memory_context["current_itinerary"] = await asyncio.to_thread(
+                container.itineraries.store.get, owner, str(payload.itinerary_id))
         result = await run_travel(container.llm, tools, execution, memory_context=memory_context)
         result.conversation_id = conversation_id
         await asyncio.to_thread(container.memory.finish, owner, conversation_id, lease, payload.prompt, result)
@@ -81,7 +88,8 @@ async def state(request: Request, owner: str = Depends(travel_identity), contain
     return {"preferences": await container.preferences.get(owner, request.headers.get("authorization")),
             "conversations": await asyncio.to_thread(container.memory.list_conversations, owner),
             "guest": owner.startswith("guest:"), "preferences_editable": owner.startswith("user:"), "maps_configured": container.maps.configured,
-            "retention_days": container.settings.memory_retention_days}
+            "retention_days": container.settings.memory_retention_days,
+            "itineraries_ready": bool(container.itineraries and await asyncio.to_thread(container.itineraries.store.check_ready))}
 
 
 @router.get("/travel/conversations/{conversation_id}")
@@ -103,6 +111,8 @@ async def preferences(payload: Preferences, request: Request, owner: str = Depen
 @router.delete("/travel/memory")
 async def forget(request: Request, owner: str = Depends(travel_identity), container: ApplicationContainer = Depends(get_container)):
     await asyncio.to_thread(container.memory.forget, owner)
+    if container.itineraries:
+        await asyncio.to_thread(container.itineraries.store.forget, owner)
     try:
         await container.preferences.clear(owner, request.headers.get("authorization"))
     except AppError as exc:

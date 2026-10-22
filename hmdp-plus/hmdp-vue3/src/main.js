@@ -7,6 +7,7 @@ import router from '@/router'
 import '@/assets/css/main.css'
 // 引入 Element Plus 全量样式，确保 Loading 遮罩等样式可用
 import 'element-plus/dist/index.css'
+import '@/assets/css/minimal.css'
 
 const app = createApp(App)
 

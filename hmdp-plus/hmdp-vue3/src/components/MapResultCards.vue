@@ -97,12 +97,12 @@ const routes = computed(() =>
 }
 .map-source {
   font-size: 10px;
-  color: #aa919a;
+  color: var(--tp-muted);
   line-height: 1.7;
 }
 .place-card,
 .route-card {
-  border: 1px solid #e9ddd5;
+  border: 1px solid var(--tp-line);
   background: #fffdf9;
   padding: 15px;
   border-radius: 13px;
@@ -112,18 +112,18 @@ const routes = computed(() =>
 .route-card > strong {
   display: block;
   font-size: 14px;
-  color: #66505b;
+  color: var(--tp-ink);
   line-height: 1.7;
 }
 .place-card p {
   font-size: 11px;
-  color: #a08d98;
+  color: var(--tp-muted);
   line-height: 1.7;
 }
 .place-meta {
   display: flex;
   gap: 14px;
-  color: #bf7e54;
+  color: var(--tp-muted);
   font-size: 11px;
 }
 .place-actions {
@@ -132,21 +132,21 @@ const routes = computed(() =>
   margin-top: 13px;
 }
 .map-cards a {
-  color: #cd7954;
+  color: var(--tp-muted);
   font-size: 12px;
   text-decoration: none;
 }
 .route-card {
-  background: #f8f4fc;
+  background: var(--tp-surface-soft);
 }
 .route-card > small {
   display: block;
-  color: #a18baf;
+  color: var(--tp-muted);
   font-size: 11px;
   margin-bottom: 8px;
 }
 .route-card > p {
-  color: #90789c;
+  color: var(--tp-muted);
   font-size: 12px;
 }
 .route-card > a {

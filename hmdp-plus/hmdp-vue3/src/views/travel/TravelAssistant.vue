@@ -7,6 +7,10 @@ import {
   Check,
   Close,
   MagicStick,
+  Sunny,
+  Umbrella,
+  Wallet,
+  Guide,
   Plus,
   Promotion,
   RefreshRight,
@@ -14,9 +18,11 @@ import {
   Tickets
 } from '@element-plus/icons-vue'
 import FootBar from '@/components/FootBar.vue'
+import DonkeyMascot from '@/components/DonkeyMascot.vue'
 import AgentRichText from '@/components/AgentRichText.vue'
 import TravelResultCards from '@/components/TravelResultCards.vue'
 import MapResultCards from '@/components/MapResultCards.vue'
+import ItineraryResultCards from '@/components/ItineraryResultCards.vue'
 import CityPicker from '@/components/CityPicker.vue'
 import TravelMemoryPanel from '@/components/TravelMemoryPanel.vue'
 import { useTravelStore } from '@/stores/modules/travel'
@@ -40,6 +46,53 @@ const canSend = computed(
 )
 const suggestions = [
   {
+    icon: Guide,
+    title: '多日行程规划',
+    subtitle: '按天安排，用高德核算路线',
+    prompt:
+      '帮我生成并保存一份按天安排的城市行程。先确认城市、天数、同行人数、全程总预算、出行方式和兴趣偏好，再查询真实地点与高德路线。',
+    skill: 'plan-city-trip'
+  },
+  {
+    icon: Guide,
+    title: '到站第一程',
+    subtitle: '放下行李，轻松开启探索',
+    prompt:
+      '刚到一座城市，帮我安排从车站或酒店出发的第一程，先确认具体起点和可用时间。',
+    skill: 'arrival-first-stop'
+  },
+  {
+    icon: RefreshRight,
+    title: '随心改行程',
+    subtitle: '走累了，就换一种安排',
+    prompt:
+      '想调整剩余行程，请先读取当前行程，确认我的当前位置和剩余时间，再给出少走路的方案。',
+    skill: 'replan-remaining'
+  },
+  {
+    icon: Wallet,
+    title: '预算一日游',
+    subtitle: '把钱花在喜欢的地方',
+    prompt:
+      '想安排一次预算友好的一日游，请先确认城市、人数、预算口径和出发点。',
+    skill: 'budget-city-day'
+  },
+  {
+    icon: Sunny,
+    title: '亲子慢游',
+    subtitle: '带上家人，放慢一点',
+    prompt: '想带家人轻松逛逛，请先确认同行需求、步行接受度和休息安排。',
+    skill: 'family-slow-trip'
+  },
+  {
+    icon: Umbrella,
+    title: '雨天备选',
+    subtitle: '天气变了，好心情继续',
+    prompt:
+      '如果下雨，帮我准备室内备选方案，先确认城市和剩余时间，不需要猜天气。',
+    skill: 'rainy-day-plan'
+  },
+  {
     icon: Shop,
     title: '美食探索',
     subtitle: '按口味、人均预算找店',
@@ -57,12 +110,19 @@ const suggestions = [
   },
   {
     icon: Tickets,
-    title: '先看看有什么',
-    subtitle: '从商户分类开始挑选',
-    prompt: '看看有哪些商户分类，帮我挑一个适合周末探店的方向。'
+    title: '优惠券核查',
+    subtitle: '看清规则，再决定划不划算',
+    prompt:
+      '帮我核查一家平台商户的优惠券，比较购买价、面值和使用限制，先问我是哪家店。',
+    skill: 'voucher-check'
   }
 ]
 const toolNames = {
+  get_visit_feedback: '回顾我的出行体验',
+  search_trip_places: '批量查询行程地点',
+  prepare_voucher_subscription: '准备候补操作',
+  get_voucher_subscription: '回查候补状态',
+  compare_shops: '商户对比',
   list_categories: '商户分类',
   search_shops: '店名搜索',
   shops_by_category: '分类商户',
@@ -73,9 +133,20 @@ const toolNames = {
   search_city_places: '城市地点搜索',
   plan_route: '地图路线',
   remember_preferences: '保存出行偏好',
-  load_travel_skill: '加载旅行技能'
+  load_travel_skill: '加载旅行技能',
+  create_itinerary: '保存行程',
+  get_current_itinerary: '读取当前行程',
+  edit_current_itinerary: '调整行程与路线'
 }
 const skillNames = {
+  'visit-review': '去过之后',
+  'plan-city-trip': '多日行程规划',
+  'arrival-first-stop': '到站第一程',
+  'replan-remaining': '随心改行程',
+  'budget-city-day': '预算一日游',
+  'family-slow-trip': '亲子慢游',
+  'rainy-day-plan': '雨天备选',
+  'voucher-check': '优惠券核查',
   'explore-food': '美食探索',
   'plan-relaxed-half-day': '轻松半日游'
 }
@@ -141,6 +212,10 @@ onMounted(async () => {
   const account = useUserStore().token
   await chat.initialize()
   if (prepared && account === useUserStore().token) chat.draft = prepared
+  if (/^[a-f0-9-]{36}$/i.test(String(route.query.itinerary || ''))) {
+    chat.activeItineraryId = route.query.itinerary
+    if (!chat.draft) chat.draft = '请先查看当前行程，帮我调整后续安排。'
+  }
   scrollToEnd()
 })
 </script>
@@ -157,11 +232,9 @@ onMounted(async () => {
         <el-icon><ArrowLeft /></el-icon>
       </button>
       <div class="header-brand">
-        <span class="brand-mark"
-          ><el-icon><MagicStick /></el-icon
-        ></span>
+        <span class="brand-mark donkey-brand"><DonkeyMascot decorative /></span>
         <div>
-          <h1>AI 旅伴</h1>
+          <h1>驴友 <small class="brand-english">TripPal</small></h1>
           <span>把出行想法，慢慢变成计划</span>
         </div>
       </div>
@@ -179,11 +252,29 @@ onMounted(async () => {
       <button type="button" @click="cityOpen = true">
         {{ chat.selectedCity || '选择城市' }} ▾</button
       ><router-link to="/travel/map">地图出行</router-link
+      ><router-link to="/travel/itineraries">我的行程</router-link
       ><button type="button" @click="openMemory('history')">历史对话</button
       ><button type="button" @click="openMemory('preferences')">
         我的记忆
       </button>
     </nav>
+    <p v-if="chat.activeItineraryId" class="memory-warning">
+      当前对话关联了一份已保存行程，可直接说“换一家”或“少走点”。
+      <router-link
+        :to="{
+          path: '/travel/itineraries',
+          query: { id: chat.activeItineraryId }
+        }"
+        >查看行程</router-link
+      >
+      <button
+        type="button"
+        :disabled="chat.pending || chat.busy"
+        @click="chat.activeItineraryId = null"
+      >
+        取消关联
+      </button>
+    </p>
     <p v-if="chat.memoryError" class="memory-warning" role="alert">
       {{ chat.memoryError }}
       <button type="button" @click="chat.initialize">重新连接记忆</button>
@@ -192,19 +283,63 @@ onMounted(async () => {
       这段对话仍在生成，正在自动等待最新结果。也可以新建对话。
     </p>
 
-    <main ref="timeline" class="travel-timeline" aria-label="旅伴对话">
+    <main ref="timeline" class="travel-timeline" aria-label="驴友对话">
       <div v-if="!hasMessages" class="welcome">
-        <div class="welcome-symbol">
-          <el-icon><MagicStick /></el-icon><span class="spark spark-one">✦</span
-          ><span class="spark spark-two">✧</span>
+        <div class="welcome-symbol donkey-welcome"><DonkeyMascot /></div>
+        <svg
+          class="landscape"
+          viewBox="0 0 360 240"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle cx="278" cy="55" r="28" fill="#e9cf80" />
+          <path
+            d="M0 160 Q75 38 165 130 Q250 22 360 120 V240 H0Z"
+            fill="#c6dfb3"
+          />
+          <path
+            d="M0 195 Q100 85 210 163 Q300 85 360 155 V240 H0Z"
+            fill="#8fbea0"
+          />
+          <path
+            d="M0 225 Q110 135 220 207 Q300 155 360 190 V240 H0Z"
+            fill="#4e9274"
+          />
+          <path
+            d="M210 240 Q138 207 217 177 Q245 162 216 151"
+            stroke="#f4efcf"
+            stroke-width="13"
+          />
+          <path
+            d="M70 125 V179 M48 154 L70 113 L93 154Z"
+            stroke="#39755d"
+            stroke-width="5"
+            stroke-linejoin="round"
+            fill="#39755d"
+          />
+          <path
+            d="M300 125 V165 M284 145 L300 115 L316 145Z"
+            stroke="#39755d"
+            stroke-width="4"
+            stroke-linejoin="round"
+            fill="#39755d"
+          />
+        </svg>
+        <div class="eyebrow">A LITTLE ESCAPE · 一起去走走</div>
+        <div class="welcome-tag">
+          <el-icon><Guide /></el-icon>
+          {{ chat.selectedCity || '从你喜欢的城市开始' }} · 慢慢探索
         </div>
-        <div class="eyebrow">YOUR LITTLE TRAVEL COMPANION</div>
-        <h2>下一顿美食，<br />下一次出发。<span>一起想想？</span></h2>
+        <h2>把日子过成，<br /><span>喜欢的风景。</span></h2>
         <p class="welcome-copy">
-          告诉我你的口味和预算，<br
+          想吃的小店、想走的街道，<br
             class="mobile-break"
-          />我来帮你找店、看优惠、安排探店。
+          />和驴友一起，安排下一段小小的出发。
         </p>
+        <div class="section-caption">
+          <strong>今天，想怎样出发？</strong
+          ><span>选一个灵感，驴友陪你细化</span>
+        </div>
         <div class="suggestion-list">
           <button
             v-for="suggestion in suggestions"
@@ -247,9 +382,9 @@ onMounted(async () => {
           >
           <template v-else>
             <div class="assistant-label">
-              <span class="mini-brand"
-                ><el-icon><MagicStick /></el-icon></span
-              >旅伴<span class="ai-badge">AI</span>
+              <span class="mini-brand donkey-avatar"
+                ><DonkeyMascot decorative /></span
+              >驴友<span class="ai-badge">AI</span>
             </div>
             <div
               v-if="message.state === 'pending'"
@@ -282,6 +417,7 @@ onMounted(async () => {
                 v-if="message.state === 'complete'"
                 :tools="message.tools"
               />
+              <ItineraryResultCards :tools="message.tools" />
               <p v-if="message.stopped" class="status-note">
                 本次查询已达到上限，可以缩小范围后继续。
               </p>
@@ -328,7 +464,7 @@ onMounted(async () => {
 
     <footer class="composer-area">
       <div class="composer" :class="{ 'is-busy': chat.pending }">
-        <label class="sr-only" for="travel-prompt">向旅伴发送消息</label>
+        <label class="sr-only" for="travel-prompt">向驴友发送消息</label>
         <textarea
           id="travel-prompt"
           ref="input"
@@ -385,14 +521,14 @@ onMounted(async () => {
   justify-content: center;
   align-items: center;
   padding: 10px 12px;
-  border-bottom: 1px solid #f0e8e9;
+  border-bottom: 1px solid var(--tp-line);
   flex-wrap: wrap;
 }
 .travel-toolbar button,
 .travel-toolbar a {
-  background: #fffaf6;
-  color: #a3848c;
-  border: 1px solid #ecdee5;
+  background: #f6fbf7;
+  color: var(--tp-ink);
+  border: 1px solid var(--tp-line);
   border-radius: 16px;
   padding: 7px 12px;
   font-size: 11px;
@@ -415,16 +551,16 @@ onMounted(async () => {
   color: inherit;
 }
 .travel-page {
-  --ink: #302a35;
-  --muted: #958994;
-  --accent: #ec754e;
+  --ink: var(--tp-ink);
+  --muted: var(--tp-muted);
+  --accent: var(--tp-ink);
   box-sizing: border-box;
   height: 100vh;
   height: 100dvh;
   padding-bottom: max(8vh, 54px);
   display: flex;
   flex-direction: column;
-  background: #fcfaf8;
+  background: #f2f8f3;
   color: var(--ink);
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
@@ -446,7 +582,7 @@ button:disabled {
 button:focus-visible,
 textarea:focus-visible,
 :deep(a:focus-visible) {
-  outline: 2px solid #b685bd;
+  outline: 2px solid var(--tp-ink);
   outline-offset: 4px;
 }
 .travel-header {
@@ -455,14 +591,14 @@ textarea:focus-visible,
   align-items: center;
   gap: 14px;
   padding: 18px max(20px, calc((100% - 880px) / 2));
-  border-bottom: 1px solid #f1eae4;
+  border-bottom: 1px solid var(--tp-line);
   background: rgba(255, 255, 255, 0.92);
 }
 .icon-button {
   border: 0;
   background: transparent;
   padding: 7px;
-  color: #655c69;
+  color: var(--tp-ink);
   font-size: 19px;
   display: inline-flex;
 }
@@ -478,14 +614,14 @@ textarea:focus-visible,
   justify-content: center;
   align-items: center;
   color: #fff;
-  background: linear-gradient(135deg, #f4a266, #e57774 60%, #a688bb);
+  background: var(--tp-ink);
 }
 .brand-mark {
   width: 38px;
   height: 38px;
   border-radius: 13px;
   font-size: 23px;
-  box-shadow: 0 4px 12px #e9926b20;
+  box-shadow: 0 4px 12px #292c2820;
 }
 h1 {
   margin: 0;
@@ -503,12 +639,12 @@ h1 {
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  border: 1px solid #eae3e5;
+  border: 1px solid var(--tp-line);
   border-radius: 18px;
   background: #fff;
   padding: 8px 12px;
   font-size: 12px;
-  color: #77687d;
+  color: var(--tp-ink);
   white-space: nowrap;
 }
 .travel-timeline {
@@ -527,24 +663,24 @@ h1 {
   width: 70px;
   height: 70px;
   margin: 0 0 24px;
-  background: linear-gradient(140deg, #fff0dc, #f8dce0 65%, #e8e1f3);
+  background: var(--tp-surface-soft);
   border: 1px solid #ffffff;
   border-radius: 25px;
-  color: #c67773;
+  color: var(--tp-ink);
   display: flex;
   justify-content: center;
   align-items: center;
   font-size: 37px;
   position: relative;
   box-shadow:
-    0 8px 28px #e1c1aa35,
+    0 8px 28px #292c2825,
     inset 0 0 0 5px #ffffff55;
   transform: rotate(-7deg);
 }
 .spark {
   position: absolute;
   font-size: 19px;
-  color: #bd96b6;
+  color: var(--tp-muted);
 }
 .spark-one {
   top: 0;
@@ -558,7 +694,7 @@ h1 {
 .eyebrow {
   font-size: 9px;
   letter-spacing: 2px;
-  color: #b09aa4;
+  color: var(--tp-muted);
   margin-bottom: 14px;
 }
 h2 {
@@ -569,12 +705,12 @@ h2 {
   letter-spacing: 1px;
 }
 h2 span {
-  color: #bd7f86;
+  color: var(--tp-ink);
 }
 .welcome-copy {
   font-size: 13px;
   line-height: 1.9;
-  color: #948592;
+  color: var(--tp-muted);
   margin: 17px 0 24px;
 }
 .suggestion-list {
@@ -587,10 +723,10 @@ h2 span {
   gap: 14px;
   width: 100%;
   text-align: left;
-  border: 1px solid #ece5df;
+  border: 1px solid var(--tp-line);
   border-radius: 15px;
   padding: 15px 17px;
-  background: #fffdfb;
+  background: #ffffff;
   color: var(--ink);
   transition:
     transform 0.15s,
@@ -598,23 +734,23 @@ h2 span {
 }
 .suggestion:hover {
   transform: translateY(-2px);
-  border-color: #e7baa2;
+  border-color: var(--tp-line);
 }
 .suggestion-icon {
-  color: #d48c61;
-  background: #fff1e5;
+  color: var(--tp-ink);
+  background: var(--tp-surface-soft);
   padding: 10px;
   display: inline-flex;
   font-size: 20px;
   border-radius: 12px;
 }
 .suggestion:nth-child(2) .suggestion-icon {
-  color: #9c80b4;
-  background: #f2ebf7;
+  color: var(--tp-ink);
+  background: var(--tp-surface-soft);
 }
 .suggestion:nth-child(3) .suggestion-icon {
-  color: #7e9b81;
-  background: #edf4eb;
+  color: var(--tp-ink);
+  background: var(--tp-surface-soft);
 }
 .suggestion-copy {
   flex: 1;
@@ -628,17 +764,17 @@ h2 span {
   display: block;
   margin-top: 5px;
   font-size: 11px;
-  color: #a0929a;
+  color: var(--tp-muted);
 }
 .suggestion-arrow {
-  color: #b6a6ac;
+  color: var(--tp-muted);
 }
 .welcome-note {
   display: flex;
   gap: 5px;
   align-items: center;
   font-size: 10px;
-  color: #aa9a9d;
+  color: var(--tp-muted);
   margin-top: 20px;
 }
 .messages {
@@ -649,7 +785,7 @@ h2 span {
 .conversation-note {
   text-align: center;
   font-size: 11px;
-  color: #b2a2aa;
+  color: var(--tp-muted);
   padding: 5px 0 22px;
 }
 .message {
@@ -662,10 +798,10 @@ h2 span {
 }
 .user-bubble {
   max-width: 87%;
-  border: 1px solid #f0d6c5;
+  border: 1px solid var(--tp-line);
   border-radius: 17px 17px 4px 17px;
-  background: #ffeadb;
-  color: #654733;
+  background: var(--tp-surface-soft);
+  color: var(--tp-ink);
   padding: 13px 17px;
   line-height: 1.8;
   white-space: pre-wrap;
@@ -676,7 +812,7 @@ h2 span {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #786571;
+  color: var(--tp-ink);
   margin-bottom: 10px;
 }
 .mini-brand {
@@ -686,8 +822,8 @@ h2 span {
   font-size: 17px;
 }
 .ai-badge {
-  border: 1px solid #e4d8e7;
-  color: #b098b2;
+  border: 1px solid var(--tp-line);
+  color: var(--tp-muted);
   font-size: 9px;
   border-radius: 4px;
   padding: 1px 4px;
@@ -704,7 +840,7 @@ h2 span {
   gap: 10px;
   align-items: center;
   padding: 10px 0 10px 34px;
-  color: #ac939e;
+  color: var(--tp-muted);
   font-size: 12px;
 }
 .thinking-dots {
@@ -716,7 +852,7 @@ h2 span {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #c795a4;
+  background: var(--tp-ink);
   animation: breathe 1.2s infinite;
 }
 .thinking-dots i:nth-child(2) {
@@ -732,7 +868,7 @@ h2 span {
   }
 }
 .query-sources {
-  color: #a398a0;
+  color: var(--tp-muted);
   margin-top: 13px;
   font-size: 10px;
 }
@@ -744,16 +880,16 @@ h2 span {
   justify-content: space-between;
   gap: 15px;
   padding: 7px 4px;
-  border-bottom: 1px solid #f0eaea;
+  border-bottom: 1px solid var(--tp-line);
 }
 .query-failed {
-  color: #bc7b69;
+  color: var(--tp-muted);
 }
 .retry-button {
   margin-top: 8px;
-  border: 1px solid #ead3cc;
-  color: #b16d5a;
-  background: #fff8f4;
+  border: 1px solid var(--tp-line);
+  color: var(--tp-muted);
+  background: var(--tp-surface-soft);
   border-radius: 8px;
   display: inline-flex;
   gap: 5px;
@@ -763,7 +899,7 @@ h2 span {
 }
 .status-note {
   font-size: 11px;
-  color: #ad8560;
+  color: #567a62;
 }
 .followup-chips {
   display: flex;
@@ -772,9 +908,9 @@ h2 span {
   padding-left: 34px;
 }
 .followup-chips button {
-  border: 1px solid #e8dee6;
-  background: #fffcff;
-  color: #937c99;
+  border: 1px solid var(--tp-line);
+  background: #f8fcf8;
+  color: var(--tp-ink);
   border-radius: 20px;
   padding: 8px 12px;
   font-size: 11px;
@@ -782,17 +918,17 @@ h2 span {
 .composer-area {
   flex-shrink: 0;
   padding: 10px max(20px, calc((100% - 692px) / 2)) 8px;
-  background: linear-gradient(#fcfaf8eb, #fcfaf8);
+  background: var(--tp-surface-soft);
 }
 .composer {
   background: #fff;
-  border: 1px solid #e3d7df;
+  border: 1px solid var(--tp-line);
   border-radius: 18px;
   padding: 13px 14px 9px;
-  box-shadow: 0 5px 25px #9a6d8710;
+  box-shadow: 0 5px 25px #292c2812;
 }
 .composer:focus-within {
-  border-color: #cda2b9;
+  border-color: var(--tp-line);
 }
 textarea {
   display: block;
@@ -800,7 +936,7 @@ textarea {
   resize: none;
   border: 0;
   background: transparent;
-  color: #493c4c;
+  color: var(--tp-ink);
   font: inherit;
   font-size: 14px;
   line-height: 1.7;
@@ -813,7 +949,7 @@ textarea {
   outline: none;
 }
 textarea::placeholder {
-  color: #bcadb6;
+  color: var(--tp-muted);
 }
 .composer-bottom {
   display: flex;
@@ -823,15 +959,15 @@ textarea::placeholder {
   margin-top: 3px;
 }
 .composer-bottom > span {
-  color: #b9a6b2;
+  color: var(--tp-muted);
   font-size: 10px;
 }
 .composer-bottom small {
-  color: #aa7587;
+  color: var(--tp-ink);
 }
 .send-button {
   border: 0;
-  background: linear-gradient(130deg, #ec9265, #df7b84);
+  background: var(--tp-ink);
   color: white;
   border-radius: 11px;
   width: 36px;
@@ -842,14 +978,14 @@ textarea::placeholder {
   font-size: 20px;
 }
 .send-button:disabled {
-  background: #e6dee2;
+  background: var(--tp-line);
   opacity: 1;
 }
 .stop-button {
-  border: 1px solid #dfd2de;
+  border: 1px solid var(--tp-line);
   border-radius: 10px;
-  background: #faf6fb;
-  color: #937c99;
+  background: var(--tp-surface-soft);
+  color: var(--tp-ink);
   padding: 7px 9px;
   font-size: 11px;
   display: inline-flex;
@@ -859,7 +995,7 @@ textarea::placeholder {
 .composer-note {
   text-align: center;
   font-size: 9px;
-  color: #b9adb4;
+  color: var(--tp-muted);
   margin: 8px 0 0;
   line-height: 1.5;
 }
@@ -934,5 +1070,274 @@ textarea::placeholder {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* A travel journal layout, with landscape shapes drawn in CSS. */
+.travel-page {
+  background: var(--tp-surface-soft);
+}
+.travel-header {
+  background: #ffffffdb;
+}
+.brand-english {
+  font-size: 11px;
+  color: var(--tp-ink);
+  font-weight: 500;
+  margin-left: 4px;
+}
+.travel-toolbar {
+  background: #ffffff80;
+  padding: 12px;
+}
+.travel-toolbar a,
+.travel-toolbar button {
+  font-size: 12px;
+  color: var(--tp-ink);
+  background: white;
+}
+.travel-toolbar a:hover,
+.travel-toolbar button:hover {
+  border-color: var(--tp-line);
+  background: var(--tp-surface-soft);
+}
+.welcome {
+  max-width: 860px;
+  width: 100%;
+  position: relative;
+  padding-top: 28px;
+}
+.welcome::before {
+  content: '';
+  position: absolute;
+  width: 160px;
+  height: 120px;
+  border-radius: 75% 40% 60% 35%;
+  right: 32px;
+  top: 40px;
+  background: var(--tp-surface-soft);
+  transform: rotate(-12deg);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.welcome::after {
+  content: '';
+  position: absolute;
+  width: 95px;
+  height: 95px;
+  border: 1px solid #292c2870;
+  border-radius: 50%;
+  right: 55px;
+  top: 52px;
+  pointer-events: none;
+}
+.welcome-symbol {
+  width: 52px;
+  height: 52px;
+  font-size: 28px;
+  border-radius: 18px;
+  margin-bottom: 18px;
+}
+.welcome-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--tp-ink);
+  margin-bottom: 10px;
+}
+h2 {
+  font-size: clamp(30px, 4vw, 43px);
+  letter-spacing: 2px;
+  line-height: 1.4;
+}
+.welcome-copy {
+  margin: 14px 0 22px;
+  color: var(--tp-ink);
+}
+.eyebrow {
+  color: var(--tp-ink);
+  font-size: 9px;
+  letter-spacing: 2.5px;
+}
+.suggestion-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.suggestion {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 126px;
+  padding: 16px;
+  border-radius: 19px;
+  box-shadow: 0 4px 20px #292c2804;
+}
+.suggestion-copy strong {
+  font-weight: 650;
+}
+.suggestion-copy small {
+  line-height: 1.6;
+}
+.suggestion-arrow {
+  position: absolute;
+  right: 15px;
+  top: 22px;
+}
+.suggestion-icon {
+  padding: 9px;
+  font-size: 21px;
+}
+.suggestion:nth-child(3n + 2) {
+  background: var(--tp-surface-soft);
+}
+.suggestion:nth-child(3n) {
+  background: var(--tp-surface-soft);
+}
+.assistant-body {
+  background: #ffffffd9;
+  border: 1px solid var(--tp-line);
+  border-radius: 4px 20px 20px;
+  padding: 16px 19px;
+  margin-left: 34px;
+}
+.assistant-label {
+  color: var(--tp-ink);
+}
+.composer {
+  border-radius: 22px;
+  box-shadow: 0 8px 28px #292c2810;
+}
+.composer-area {
+  background: var(--tp-surface-soft);
+}
+.travel-page :deep(.foot .active) {
+  color: var(--tp-ink);
+}
+@media (max-width: 600px) {
+  .welcome {
+    padding: 24px 20px 18px;
+  }
+  .suggestion-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .suggestion {
+    min-height: 120px;
+    padding: 13px;
+    gap: 9px;
+  }
+  .welcome::before {
+    right: 15px;
+    width: 100px;
+    height: 90px;
+    top: 35px;
+    opacity: 0.45;
+  }
+  .welcome::after {
+    right: 30px;
+    width: 65px;
+    height: 65px;
+    top: 47px;
+  }
+  .assistant-body {
+    margin-left: 0;
+    padding: 14px;
+  }
+}
+
+.landscape {
+  position: absolute;
+  right: 20px;
+  top: 24px;
+  width: 300px;
+  height: 210px;
+  opacity: 0.9;
+  pointer-events: none;
+  border-radius: 35% 35% 24% 24%;
+}
+.welcome::before,
+.welcome::after {
+  display: none;
+}
+.welcome > :not(.landscape) {
+  position: relative;
+}
+.welcome h2 {
+  max-width: 420px;
+  font-weight: 750;
+  letter-spacing: 1px;
+}
+.section-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 28px 0 14px;
+}
+.section-caption strong {
+  font-size: 15px;
+}
+.section-caption span {
+  font-size: 11px;
+  color: var(--tp-muted);
+}
+.suggestion-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.suggestion {
+  transition:
+    transform 0.18s,
+    box-shadow 0.18s;
+  border-color: var(--tp-line);
+}
+.suggestion:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px #292c2812;
+}
+@media (max-width: 700px) {
+  .landscape {
+    width: 155px;
+    height: 125px;
+    right: 8px;
+    top: 65px;
+    opacity: 0.6;
+  }
+  .suggestion-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .section-caption {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .welcome h2 {
+    font-size: 30px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .suggestion:hover {
+    transform: none;
+  }
+}
+.brand-mark.donkey-brand {
+  width: 44px;
+  height: 52px;
+  background: transparent;
+  box-shadow: none;
+}
+.welcome-symbol.donkey-welcome {
+  width: 80px;
+  height: 96px;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.mini-brand.donkey-avatar {
+  width: 28px;
+  height: 34px;
+  background: transparent;
+  border-radius: 0;
 }
 </style>

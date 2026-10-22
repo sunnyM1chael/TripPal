@@ -82,7 +82,7 @@ def main():
         print(f"FAIL: MySQL integration test (exit={result.returncode}). No backend setting changed.")
         print("Run the dedicated test locally to inspect the failure; do not share credentials.")
         return 1
-    print("PASS: Real MySQL persistence, owner isolation, leases, summary and SQLite import")
+    print("PASS: Real MySQL persistence, owner isolation, leases, summary, SQLite import and itinerary revision checks")
     print("MySQL integration passed. .env is unchanged; Java account preferences are a separate check.")
     print("Before switching MEMORY_BACKEND=mysql, stop Python and import existing SQLite history if needed.")
     return 0

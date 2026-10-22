@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import httpx
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import CallToolResult, TextContent, Tool, ToolAnnotations
+from mcp.types import CallToolResult, TextContent, Tool, ToolAnnotations, Resource, Prompt, PromptArgument, PromptMessage, GetPromptResult
 from pydantic import ValidationError
 
 from app.core.config import Settings
@@ -16,13 +16,29 @@ from app.core.logging import configure_logging
 from app.integrations.amap import AmapClient
 from app.integrations.hmdp.client import HmdpClient
 from app.tools.travel import DEFINITIONS, MAP_DEFINITIONS, TravelTools
+from app.skills.catalog import catalog, load_skill
 
 
 # Deliberately exclude account memory, credentials, writes and arbitrary HTTP requests.
 READ_TOOL_NAMES = (
     "list_categories", "search_shops", "shops_by_category", "shop_detail", "shop_vouchers",
-    "plan_day", "search_cities", "search_city_places", "plan_route",
+    "plan_day", "search_cities", "search_city_places", "plan_route", "compare_shops",
 )
+def capability_guide() -> str:
+    return json.dumps({
+        "service": "TripPal", "mode": "read-only",
+        "workflows": catalog(),
+        "tools": [{"name": name, "description": description}
+                  for name, (_, description) in READ_TOOLS.items()],
+        "constraints": ["平台 shop_id 与高德 poi_id 不可互换。", "地图路线支持步行和驾车；不提供实时天气、公交班次或寄存空位。",
+                        "不开放私人记忆、行程写入、抢券或支付。", "先查询再推荐；未知价格、营业与预约信息需要标明。"],
+        "recipes": {
+            "food": ["search_city_places", "search_shops", "compare_shops"],
+            "arrival": ["search_cities", "search_city_places", "plan_route"],
+            "vouchers": ["search_shops", "shop_detail", "shop_vouchers"]},
+    }, ensure_ascii=False)
+
+
 READ_TOOLS = {name: {**DEFINITIONS, **MAP_DEFINITIONS}[name] for name in READ_TOOL_NAMES}
 
 
@@ -63,6 +79,36 @@ def create_server(injected_tools: TravelTools | None = None) -> Server:
                 settings.amap_timeout))
 
     server = Server("trippal-readonly", lifespan=lifespan)
+
+    @server.list_resources()
+    async def list_resources():
+        return [Resource(uri="trippal://guide/capabilities", name="旅伴能力与工具指南",
+                         description="可用工具、场景流程、数据来源和使用边界", mimeType="application/json")] + [Resource(uri=f"trippal://skills/{item['name']}", name=item["title"],
+                         description=item["description"], mimeType="text/markdown") for item in catalog()]
+
+    @server.read_resource()
+    async def read_resource(uri):
+        if str(uri) == "trippal://guide/capabilities":
+            return capability_guide()
+        known = {f"trippal://skills/{item['name']}": item["name"] for item in catalog()}
+        if str(uri) not in known:
+            raise ValueError("Unknown travel resource")
+        return load_skill(known[str(uri)])
+
+    @server.list_prompts()
+    async def list_prompts():
+        return [Prompt(name=item["name"], description=item["description"], arguments=[
+            PromptArgument(name="request", description="城市、人数、预算和本次出行需求", required=True)]) for item in catalog()]
+
+    @server.get_prompt()
+    async def get_prompt(name, arguments):
+        workflow = load_skill(name)
+        request = (arguments or {}).get("request", "")
+        if not isinstance(request, str) or not request.strip() or len(request) > 4000:
+            raise ValueError("A request of 1–4000 characters is required")
+        return GetPromptResult(description="旅伴场景流程；只使用已开放工具，查询成功后再给出结论。", messages=[
+            PromptMessage(role="user", content=TextContent(type="text", text=f"按以下流程协助我：\n{workflow}")),
+            PromptMessage(role="user", content=TextContent(type="text", text=request))])
 
     @server.list_tools()
     async def list_tools():

@@ -26,6 +26,14 @@ async def test_mcp_protocol_initialize_discover_and_query():
         server = create_server(TravelTools(HmdpClient(java, timeout=1)))
         # Real SDK sessions and JSON-RPC over in-memory streams; no network or keys.
         async with create_connected_server_and_client_session(server) as session:
+            resources = await session.list_resources()
+            assert "trippal://guide/capabilities" in {str(r.uri) for r in resources.resources}
+            guide = await session.read_resource("trippal://guide/capabilities")
+            assert "plan_route" in guide.contents[0].text
+            prompts = await session.list_prompts()
+            assert "arrival-first-stop" in {p.name for p in prompts.prompts}
+            prompt = await session.get_prompt("replan-remaining", {"request": "走累了，少走一点"})
+            assert "get_current_itinerary" in prompt.messages[0].content.text
             listing = await session.list_tools()
             assert {t.name for t in listing.tools} == set(READ_TOOLS)
             assert all(t.annotations.readOnlyHint for t in listing.tools)

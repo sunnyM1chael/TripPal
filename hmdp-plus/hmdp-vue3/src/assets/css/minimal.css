@@ -1,0 +1,145 @@
+:root {
+  --tp-ink: #292c28;
+  --tp-muted: #72766d;
+  --tp-line: #e6e7e1;
+  --tp-surface: #ffffff;
+  --tp-surface-soft: #f7f7f4;
+  --el-color-primary: #353b32;
+  --el-color-primary-light-3: #73796f;
+  --el-color-primary-light-5: #a2a69d;
+  --el-color-primary-light-7: #d2d5cb;
+  --el-color-primary-light-8: #e7e9e2;
+  --el-color-primary-light-9: #f4f5f1;
+  --el-color-primary-dark-2: #22271f;
+  --el-border-color: #e6e7e1;
+  --el-text-color-primary: #292c28;
+}
+body {
+  background: var(--tp-surface-soft);
+  color: var(--tp-ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+#app .foot {
+  padding-left: calc(72px + env(safe-area-inset-left));
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(max(8vh, 54px) + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: #fffffff5;
+  border-top: 1px solid var(--tp-line);
+  box-shadow: none;
+}
+#app .foot .foot-box {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+#app .foot .active {
+  color: var(--tp-ink);
+  font-weight: 600;
+}
+#app .foot .add-btn {
+  box-shadow: none;
+}
+#app .home-page .search-bar {
+  background: white;
+  color: var(--tp-ink);
+  border-bottom: 1px solid var(--tp-line);
+  padding: 14px 18px;
+}
+#app .workshop-entry {
+  background: white;
+  border-radius: 12px;
+}
+#app .workshop-entry-links a,
+#app .workshop-entry-links a:last-child {
+  background: var(--tp-surface-soft);
+  border: 1px solid var(--tp-line);
+}
+#app .workshop-entry-links a:hover {
+  background: white;
+  border-color: #b8bdb1;
+}
+#app .home-city {
+  color: var(--tp-ink);
+  background: var(--tp-surface-soft);
+  border-radius: 8px;
+}
+#app .search-input {
+  max-width: none;
+}
+#app .type-list {
+  box-shadow: none;
+  border-bottom: 1px solid var(--tp-line);
+}
+#app .blog-list {
+  background: var(--tp-surface-soft);
+  padding: 8px 6px;
+  box-sizing: border-box;
+}
+#app .blog-box {
+  box-shadow: none;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+#app .el-tabs__active-bar {
+  background: var(--tp-ink);
+  background-image: none;
+  height: 2px;
+}
+#app .travel-page .welcome::before,
+#app .travel-page .welcome::after {
+  content: none;
+}
+#app .travel-page .welcome-landscape {
+  display: none;
+}
+#app .travel-page .suggestion {
+  border-radius: 12px;
+  box-shadow: none;
+  background: white;
+}
+#app .travel-page .composer {
+  border-radius: 14px;
+  box-shadow: none;
+}
+#app .travel-page .assistant-body {
+  background: white;
+  border-radius: 12px;
+}
+#app .travel-page .brand-mark,
+#app .travel-page .mini-brand {
+  background: var(--tp-ink);
+}
+#app .travel-page .send-button {
+  background: var(--tp-ink);
+}
+#app .travel-page .send-button:disabled {
+  background: #d6d8d1;
+}
+#app .workshop .hero {
+  background: white;
+  border: 1px solid var(--tp-line);
+  border-radius: 12px;
+}
+#app .workshop .card,
+#app .workshop .panel,
+#app .inbox-page .notification {
+  border-radius: 12px;
+  box-shadow: none;
+}
+#app .inbox-page .inbox-summary {
+  background: white;
+  border-radius: 12px;
+}
+#app .inbox-page .empty-icon {
+  transform: none;
+}

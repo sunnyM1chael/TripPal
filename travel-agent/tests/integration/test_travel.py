@@ -17,7 +17,11 @@ def test_page_fake_mode_and_validation(tmp_path):
     with TestClient(create_app(Settings(_env_file=None, llm_provider="fake", memory_db_path=tmp_path / "test.sqlite3"))) as client:
         assert client.get("/assistant").status_code == 200
         skills = client.get("/api/v1/travel/skills").json()["skills"]
-        assert {skill["name"] for skill in skills} == {"explore-food", "plan-relaxed-half-day"}
+        assert {skill["name"] for skill in skills} == {
+            "visit-review", "plan-city-trip",
+            "explore-food", "plan-relaxed-half-day", "budget-city-day",
+            "family-slow-trip", "rainy-day-plan", "voucher-check", "arrival-first-stop", "replan-remaining",
+        }
         assert client.post("/api/v1/travel/chat", json={"prompt": "找餐馆", "skill": "../.env"}).status_code == 422
         data = client.post("/api/v1/travel/chat", json={"prompt": "找火锅"}).json()
         assert data["mode"] == "configuration_required"
@@ -54,7 +58,10 @@ async def test_native_tool_round_trip_and_auth_forwarding():
     assert result.mode == "live"
     shops = result.tool_results[0]["data"]["shops"]
     assert len(shops) == 1 and shops[0]["score"] == 4.5
-    assert len(seen[0]["tools"]) == 7
+    assert {tool["function"]["name"] for tool in seen[0]["tools"]} == {
+        "compare_shops", "list_categories", "search_shops", "shops_by_category",
+        "shop_detail", "shop_vouchers", "plan_day", "load_travel_skill",
+    }
     assert seen[1]["messages"][-1]["tool_call_id"] == "c1"
     assert "opaque-token" not in json.dumps(seen)
 

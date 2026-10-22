@@ -209,6 +209,18 @@ uv run pytest tests/unit/test_memory.py tests/unit/test_account_preferences.py t
 
 MySQL 集成检查需先初始化独立的、名称以 `_test` 结尾的测试库，再在测试终端环境变量中提供 `MEMORY_MYSQL_*`、`TRAVEL_TEST_MYSQL=1`，执行 `uv run --no-sync pytest tests/integration/test_mysql_memory.py`。测试故意不加载本地 `.env`，不允许使用默认业务/运行库；未配置时跳过。实际部署还需登录后的 Java → Python → MySQL 联调，不能用模型连通测试代替。
 
+## 可保存行程与途中调整
+
+Vue 的 AI 旅伴工具栏新增“我的行程”（`/travel/itineraries`）。支持手动搜索选点或让聊天中的 Agent 查询后保存，随后换店、删点、调整顺序和停留时长、更新预算与出行方式，按顺序标记已完成。最多6个地点、每个身份最多50份行程；访客使用原 Cookie 身份，登录账号由 Java 验证。行程独立于聊天持久化，删除一段聊天不会删除行程；“清除全部记忆”会清除该身份的行程、聊天与长期偏好。
+
+行程存于同一 Python 独立库的 `itineraries` 表，使用版本号进行乐观并发控制；过期更新/删除返回409，已完成地点不可改写或移动。模型仅能提交高德 POI ID，地点名称、地址和参考价格由服务端重新查询；不接受客户端伪造的地点快照。地图缺失项明确标为未知，总时长和已知费用小计由代码计算。休息与停留时长是规划建议；费用为多人参考小计，不含交通等未知费用，只有已知小计超预算时明确标记，其他情况不承诺预算充足。
+
+MySQL 用户启用前执行 `uv run --no-sync python -m app.memory.admin init` 并重启；它会新增行程表，保留既有数据。SQLite 自动初始化。未迁移的 MySQL 可以继续聊天，暂不提供行程保存。运行时账号不需要 DDL 权限。
+
+新增接口：`GET/POST /api/v1/itineraries`，`GET/PATCH/DELETE /api/v1/itineraries/{id}`。更新须携带 `expected_revision`；删除通过同名查询参数提供版本。聊天可传 `itinerary_id` 指定当前行程，服务端核验归属。新增三个应用内工具：`create_itinerary`、`get_current_itinerary`、`edit_current_itinerary`；只读 MCP 不开放这些写入能力。创建工具同一轮重复调用复用已有结果，修改重新查版本及路线。
+
+行程没有自动过期清理，需用户主动删除；历史与行程的跨后端迁移尚未统一，现有 SQLite 导入工具只导入聊天。未实现返程自动规划、公交、预约、付费下单、实际记账和持续定位。部署及真实验收见上级目录 [开发说明](../docs/DEVELOPMENT.md)。
+
 ## 旅行 Skill
 
 内置两个应用内 Skill，文件随项目版本管理，位于 `app/skills/bundled/`：

@@ -31,14 +31,10 @@ Spring Boot 继续负责用户、商户、业务数据、Redis、Kafka 和数据
 
 ## 敏感配置
 
-仓库不保存数据库密码、Redis 密码、LLM API Key 或本地 `.env`。
-
-Java 服务通过环境变量读取：
-
-```text
-MYSQL_PASSWORD
-REDIS_PASSWORD
-```
+当前源码不提交数据库密码、Redis 密码、LLM API Key 或本地 `.env`。
+Java 的本机 `application.yml`、`shardingsphere.yaml` 已停止 Git 跟踪，已有文件保持可用。
+首次克隆请从同目录的 `.example.yml` / `.example.yaml` 复制并在本地填写连接配置，
+详见 [本机配置说明](docs/DEVELOPMENT.md)。历史提交中的旧配置未被重写。
 
 Python Agent 的配置模板位于 `travel-agent/.env.example`，本地使用时复制为 `.env` 并填写实际值；`.env` 已被 Git 忽略。
 
@@ -52,4 +48,14 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 更详细的 Agent Platform 文档请查看 `travel-agent/README.md` 和 `travel-agent/docs/architecture.md`。
+
+“驴友”新增多日行程规划：单城市1至7天，按每天分配地点，用高德计算站点间路线，逐日校验时间并核算全程预算。可在“我的行程”查看和调整，旧单日行程兼容；详见 [多日行程说明](docs/MULTIDAY_ITINERARY.md)。
+
+已接入“优惠券候补”执行流程：驴友查询真实商户和券，准备操作卡；用户核对并确认后调用现有 Java 订阅接口，再回查状态，支持退出候补。候补可能自动发券并创建券订单，不是普通提醒。无需新增 Java 表，详见 [候补流程与验收](docs/VOUCHER_SUBSCRIPTION_FLOW.md)。
+
+## 固定启动与新行程功能
+
+以后以本仓库为开发与更新入口。根目录执行 `./dev.ps1 agent` 启动 Python，另一个终端执行 `./dev.ps1 web` 启动 Vue，`./dev.ps1 check` 检查服务。旧 Java 目录可暂时作为兼容运行副本，完整约定见 [开发与验收说明](docs/DEVELOPMENT.md)。
+
+已增加“我的行程”：从高德地点生成并保存行程卡，可换店、删点、调顺序、调整停留和预算，支持标记完成及聊天中的途中调整。保存采用版本检查，已完成部分锁定。MySQL 需先运行 `python -m app.memory.admin init` 新增行程表，再重启 Python。
 

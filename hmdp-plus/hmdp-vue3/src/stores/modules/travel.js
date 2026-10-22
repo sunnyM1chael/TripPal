@@ -23,6 +23,8 @@ export const useTravelStore = defineStore('travel-chat', () => {
   const memoryError = ref('')
   const mapsConfigured = ref(false)
   const selectedCity = ref('')
+  const activeItineraryId = ref(null)
+  const itinerariesReady = ref(false)
   const canRetry = computed(() => messages.value.at(-1)?.state === 'error')
   let controller = null
   let generation = 0
@@ -48,6 +50,7 @@ export const useTravelStore = defineStore('travel-chat', () => {
     clearTimeout(pollTimer)
     busy.value = false
     conversationId.value = null
+    activeItineraryId.value = null
     messages.value = []
     draft.value = ''
   }
@@ -60,6 +63,7 @@ export const useTravelStore = defineStore('travel-chat', () => {
     preferences.value = data.preferences
     guest.value = data.guest
     mapsConfigured.value = data.maps_configured
+    itinerariesReady.value = Boolean(data.itineraries_ready)
     if (!selectedCity.value)
       selectedCity.value = data.preferences.default_city || ''
     initialized.value = true
@@ -119,6 +123,11 @@ export const useTravelStore = defineStore('travel-chat', () => {
         stopped: Boolean(row.stopped)
       }
     ])
+    activeItineraryId.value =
+      [...data.turns]
+        .reverse()
+        .flatMap((row) => [...row.tools].reverse())
+        .find((row) => row.data?.itinerary?.id)?.data.itinerary.id || null
     if (data.busy) {
       pollTimer = setTimeout(() => {
         if (conversationId.value === id && !pending.value) {
@@ -162,6 +171,7 @@ export const useTravelStore = defineStore('travel-chat', () => {
         {
           prompt,
           skill,
+          itinerary_id: activeItineraryId.value,
           conversation_id: conversationId.value,
           city: selectedCity.value || null
         },
@@ -171,6 +181,10 @@ export const useTravelStore = defineStore('travel-chat', () => {
       conversationId.value = result.conversation_id || conversationId.value
       assistantMessage.content = result.output
       assistantMessage.tools = result.tool_results
+      const savedPlan = [...result.tool_results]
+        .reverse()
+        .find((row) => row.data?.itinerary?.id)
+      if (savedPlan) activeItineraryId.value = savedPlan.data.itinerary.id
       assistantMessage.skills = result.loaded_skills || []
       assistantMessage.state =
         result.mode === 'live' ? 'complete' : 'configuration'
@@ -261,6 +275,8 @@ export const useTravelStore = defineStore('travel-chat', () => {
     memoryError,
     mapsConfigured,
     selectedCity,
+    activeItineraryId,
+    itinerariesReady,
     initialize,
     refreshState,
     openConversation,

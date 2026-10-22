@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Location, RefreshRight } from '@element-plus/icons-vue'
 import CityPicker from '@/components/CityPicker.vue'
 import { useTravelStore } from '@/stores/modules/travel'
 import { searchPlaces, placeDetail, planMapRoute } from '@/api/travel'
+import { usePlaceSearch } from '@/composables/usePlaceSearch'
 import {
   navigationFor,
   safeMapUrl,
@@ -16,17 +17,41 @@ const chat = useTravelStore()
 const route = useRoute()
 const router = useRouter()
 const cityOpen = ref(false)
-const keyword = ref('')
-const field = ref('destination')
+const keywordInput = ref(null)
 const origin = ref(null)
 const destination = ref(null)
 const mode = ref(route.query.mode === 'walking' ? 'walking' : 'driving')
-const places = ref([])
 const result = ref(null)
-const pending = ref(false)
+const routing = ref(false)
 const error = ref('')
 const previewFailed = ref(false)
-let searchVersion = 0
+let routeVersion = 0
+const {
+  field,
+  keyword,
+  places,
+  searching,
+  searchError,
+  searched,
+  cancel,
+  activate,
+  search,
+  select
+} = usePlaceSearch({
+  city: () => chat.selectedCity,
+  lookup: searchPlaces,
+  onMissingCity: () => {
+    cityOpen.value = true
+    error.value = '请先选择城市。'
+  },
+  onSelect: (target, place) => {
+    if (target === 'origin') origin.value = place
+    else destination.value = place
+    invalidate()
+    nextTick(() => keywordInput.value?.focus())
+  }
+})
+const pending = computed(() => searching.value || routing.value)
 const navigation = computed(() =>
   result.value
     ? safeMapUrl(result.value.navigation_url)
@@ -39,6 +64,8 @@ const preview = computed(() =>
 )
 
 function invalidate() {
+  routeVersion++
+  routing.value = false
   result.value = null
   error.value = ''
   previewFailed.value = false
@@ -48,57 +75,43 @@ function setMode(value) {
   invalidate()
 }
 function cityChanged() {
-  searchVersion++
-  places.value = []
-  keyword.value = ''
+  activate('origin')
   origin.value = null
   destination.value = null
   invalidate()
 }
-async function search() {
-  if (!keyword.value.trim() || pending.value) return
-  if (!chat.selectedCity) {
-    cityOpen.value = true
-    error.value = '请先选择城市。'
-    return
-  }
-  const turn = ++searchVersion
-  pending.value = true
-  error.value = ''
-  try {
-    const data = await searchPlaces(chat.selectedCity, keyword.value.trim())
-    if (turn === searchVersion) places.value = data.places
-  } catch (err) {
-    if (turn === searchVersion) error.value = err.message
-  } finally {
-    pending.value = false
-  }
-}
-function select(place) {
-  if (field.value === 'origin') origin.value = place
-  else destination.value = place
-  places.value = []
-  keyword.value = ''
-  invalidate()
+async function chooseField(value) {
+  activate(value)
+  await nextTick()
+  keywordInput.value?.focus()
 }
 async function calculate() {
   if (!origin.value || !destination.value || pending.value) return
-  pending.value = true
+  const turn = ++routeVersion
+  routing.value = true
   error.value = ''
   previewFailed.value = false
   try {
-    result.value = await planMapRoute({
+    const data = await planMapRoute({
       origin_poi_id: origin.value.poi_id,
       destination_poi_id: destination.value.poi_id,
       mode: mode.value
     })
+    if (turn === routeVersion) result.value = data
   } catch (err) {
-    error.value = err.message
-    result.value = null
+    if (turn === routeVersion) {
+      error.value = err.message
+      result.value = null
+    }
   } finally {
-    pending.value = false
+    if (turn === routeVersion) routing.value = false
   }
 }
+watch(() => chat.selectedCity, cityChanged)
+onUnmounted(() => {
+  cancel()
+  invalidate()
+})
 function askTravel() {
   const names = [origin.value?.name, destination.value?.name]
     .filter(Boolean)
@@ -157,19 +170,24 @@ onMounted(async () => {
           <button
             type="button"
             :class="{ focused: field === 'origin' }"
-            @click="field = 'origin'"
+            :aria-pressed="field === 'origin'"
+            @click="chooseField('origin')"
           >
             <i class="origin-dot"></i
-            ><span>{{ origin?.name || '选择出发地点' }}</span></button
+            ><span>起点：{{ origin?.name || '选择出发地点' }}</span></button
           ><button
             type="button"
             :class="{ focused: field === 'destination' }"
-            @click="field = 'destination'"
+            :aria-pressed="field === 'destination'"
+            @click="chooseField('destination')"
           >
             <i class="destination-dot"></i
-            ><span>{{ destination?.name || '选择到达地点' }}</span>
+            ><span>终点：{{ destination?.name || '选择到达地点' }}</span>
           </button>
         </div>
+        <p class="map-caption">
+          选择起点或终点，在下方搜索名称，再从结果中选择准确地点。
+        </p>
         <form @submit.prevent="search">
           <label for="place-keyword"
             >搜索{{ field === 'origin' ? '出发地' : '目的地' }}</label
@@ -177,15 +195,23 @@ onMounted(async () => {
           <div>
             <input
               id="place-keyword"
+              ref="keywordInput"
               v-model="keyword"
+              @input="cancel"
               maxlength="100"
               :placeholder="`在${chat.selectedCity || '所选城市'}搜索店铺、景点、车站`"
             /><button :disabled="pending || !keyword.trim()">
-              {{ pending ? '查询中…' : '搜索' }}
+              {{ searching ? '查询中…' : '搜索' }}
             </button>
           </div>
         </form>
         <p v-if="error" class="map-error" role="alert">{{ error }}</p>
+        <p v-if="searchError" class="map-error" role="alert">
+          {{ searchError }}
+        </p>
+        <p v-if="searched && !places.length" class="map-caption" role="status">
+          没有找到地点，请检查城市，或输入更完整的名称。
+        </p>
         <div v-if="places.length" class="place-search-results">
           <p>请选择准确地址，避免同名地点混淆</p>
           <button
@@ -208,7 +234,7 @@ onMounted(async () => {
         >
           <el-icon><RefreshRight /></el-icon
           >{{
-            pending ? '查询路线中…' : result ? '刷新路线与耗时' : '查询路线'
+            routing ? '查询路线中…' : result ? '刷新路线与耗时' : '查询路线'
           }}
         </button>
       </section>
@@ -264,14 +290,14 @@ onMounted(async () => {
         内展示查询时的路线；打开高德后获取持续定位、语音指引和实时重算。浏览器不会自动获取或保存你的当前位置。
       </p>
     </main>
-    <CityPicker v-model="cityOpen" @select="cityChanged" />
+    <CityPicker v-model="cityOpen" />
   </div>
 </template>
 <style scoped>
 .travel-map-page {
   min-height: 100vh;
   background: #faf7f4;
-  color: #54434e;
+  color: var(--tp-ink);
   font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', sans-serif;
   font-size: 14px;
 }
@@ -283,7 +309,7 @@ header {
   gap: 12px;
   align-items: center;
   background: white;
-  border-bottom: 1px solid #eee5e1;
+  border-bottom: 1px solid var(--tp-line);
   padding: 19px max(16px, calc((100% - 720px) / 2));
 }
 header h1 {
@@ -297,7 +323,7 @@ header button {
   align-items: center;
   background: none;
   border: 0;
-  color: #a27888;
+  color: var(--tp-muted);
   cursor: pointer;
 }
 header button:first-child {
@@ -311,7 +337,7 @@ main {
 .route-search,
 .route-result {
   padding: 20px;
-  border: 1px solid #eaded7;
+  border: 1px solid var(--tp-line);
   border-radius: 17px;
   background: #fff;
   margin-bottom: 18px;
@@ -322,17 +348,17 @@ main {
   margin-bottom: 18px;
 }
 .mode-tabs button {
-  border: 1px solid #e9dfe5;
-  color: #a88b9b;
+  border: 1px solid var(--tp-line);
+  color: var(--tp-muted);
   padding: 8px 22px;
   border-radius: 18px;
   background: white;
   cursor: pointer;
 }
 .mode-tabs .selected {
-  background: #fff0e5;
-  border-color: #edbca0;
-  color: #c77952;
+  background: var(--tp-surface-soft);
+  border-color: var(--tp-line);
+  color: var(--tp-muted);
 }
 .point-fields {
   display: grid;
@@ -343,16 +369,16 @@ main {
   gap: 10px;
   align-items: center;
   padding: 13px;
-  border: 1px solid #eae2e8;
+  border: 1px solid var(--tp-line);
   border-radius: 10px;
   text-align: left;
   background: #fdfbfc;
-  color: #76616f;
+  color: var(--tp-ink);
   cursor: pointer;
 }
 .point-fields .focused {
-  border-color: #d9a8bc;
-  background: #fff8fb;
+  border-color: var(--tp-line);
+  background: var(--tp-surface-soft);
 }
 .point-fields i {
   display: block;
@@ -374,7 +400,7 @@ form label {
   display: block;
   font-size: 11px;
   margin-bottom: 8px;
-  color: #a6909c;
+  color: var(--tp-muted);
 }
 form > div {
   display: flex;
@@ -383,14 +409,14 @@ form > div {
 input {
   flex: 1;
   width: 0;
-  border: 1px solid #eadce5;
+  border: 1px solid var(--tp-line);
   padding: 12px;
   border-radius: 10px;
   font-size: 13px;
 }
 form button {
   border: 0;
-  background: #e38d6b;
+  background: var(--tp-muted);
   color: white;
   padding: 0 17px;
   border-radius: 9px;
@@ -404,8 +430,8 @@ form button {
   width: 100%;
   border: 0;
   border-radius: 10px;
-  color: #a67459;
-  background: #ffeddf;
+  color: var(--tp-muted);
+  background: var(--tp-surface-soft);
   padding: 13px;
   display: flex;
   gap: 7px;
@@ -417,7 +443,7 @@ form button {
   margin: 15px 0;
 }
 .place-search-results > p {
-  color: #ac99a5;
+  color: var(--tp-muted);
   font-size: 11px;
 }
 .place-search-results > button {
@@ -433,11 +459,11 @@ form button {
 .place-search-results strong {
   display: block;
   font-size: 13px;
-  color: #7d5b70;
+  color: var(--tp-ink);
 }
 .place-search-results span {
   display: block;
-  color: #ac98a4;
+  color: var(--tp-muted);
   font-size: 11px;
   margin-top: 7px;
   line-height: 1.6;
@@ -449,15 +475,15 @@ form button {
   flex-wrap: wrap;
 }
 .route-stats strong {
-  color: #b46f52;
+  color: var(--tp-muted);
   font-size: 25px;
 }
 .route-stats span {
-  color: #9d8190;
+  color: var(--tp-muted);
   font-size: 12px;
 }
 .route-time {
-  color: #b09ba7;
+  color: var(--tp-muted);
   font-size: 10px;
 }
 .route-preview {
@@ -469,19 +495,19 @@ form button {
 .route-steps {
   padding-left: 22px;
   margin-top: 22px;
-  color: #a58795;
+  color: var(--tp-muted);
 }
 .route-steps li {
   padding: 10px 0 10px 5px;
-  border-bottom: 1px solid #f1e9ed;
+  border-bottom: 1px solid var(--tp-line);
 }
 .route-steps span {
-  color: #7f6878;
+  color: var(--tp-muted);
   font-size: 12px;
   line-height: 1.8;
 }
 .route-steps small {
-  color: #ad97a5;
+  color: var(--tp-muted);
   font-size: 10px;
   display: block;
   margin-top: 4px;
@@ -495,15 +521,15 @@ form button {
   display: block;
   text-decoration: none;
   text-align: center;
-  background: #df8865;
+  background: var(--tp-muted);
   color: white;
   padding: 15px;
   border-radius: 12px;
 }
 .navigation-actions button {
-  background: #f4edf7;
-  border: 1px solid #e8dcea;
-  color: #a184a8;
+  background: var(--tp-surface-soft);
+  border: 1px solid var(--tp-line);
+  color: var(--tp-muted);
   border-radius: 12px;
   padding: 13px;
   cursor: pointer;
@@ -512,16 +538,16 @@ form button {
 .preview-unavailable {
   font-size: 11px;
   line-height: 1.9;
-  color: #af9aa7;
+  color: var(--tp-muted);
 }
 .map-empty {
   text-align: center;
-  color: #b598a8;
+  color: var(--tp-muted);
   padding: 34px 10px;
 }
 .map-empty > .el-icon {
   font-size: 42px;
-  color: #d5b6c3;
+  color: var(--tp-muted);
 }
 .map-empty h2 {
   font-size: 16px;

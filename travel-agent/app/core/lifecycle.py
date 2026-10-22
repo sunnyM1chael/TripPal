@@ -20,6 +20,9 @@ from app.tools.registry import ToolRegistry
 from app.integrations.amap import AmapClient
 from app.memory.factory import create_memory
 from app.integrations.hmdp.preferences import PreferenceGateway
+from app.itineraries.store import ItineraryStore
+from app.itineraries.service import ItineraryService
+from app.services.voucher_subscription import VoucherSubscriptions
 
 
 async def echo(arguments: dict[str, Any]) -> Any:
@@ -32,6 +35,8 @@ def create_lifespan(settings: Settings):
         instrumentation = StructuredLogInstrumentation()
         memory = create_memory(settings)
         await asyncio.to_thread(memory.initialize, settings.memory_retention_days)
+        itinerary_store = ItineraryStore(memory)
+        await asyncio.to_thread(itinerary_store.initialize)
         hmdp_http_client = httpx.AsyncClient(base_url=str(settings.hmdp_base_url))
         maps_http_client = httpx.AsyncClient(base_url="https://restapi.amap.com", follow_redirects=False)
         llm_http_client = None
@@ -58,6 +63,8 @@ def create_lifespan(settings: Settings):
             maps=AmapClient(maps_http_client, settings.amap_api_key.get_secret_value() if settings.amap_api_key else None,
                             settings.amap_timeout),
         )
+        app.state.container.itineraries = ItineraryService(itinerary_store, app.state.container.maps)
+        app.state.container.subscriptions = VoucherSubscriptions(app.state.container.hmdp_client)
         try:
             yield
         finally:

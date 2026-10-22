@@ -10,10 +10,16 @@ from app.core.context import get_request_context
 from app.domain.models import AgentExecutionRequest
 from app.services.agent import AgentService
 from app.api.travel_routes import router as travel_router
+from app.api.itinerary_routes import router as itinerary_router
+from app.api.notification_routes import router as notification_router
+from app.api.subscription_routes import router as subscription_router
 
 
 router = APIRouter()
 router.include_router(travel_router)
+router.include_router(itinerary_router)
+router.include_router(notification_router)
+router.include_router(subscription_router)
 
 
 @router.get("/", include_in_schema=False)

@@ -579,8 +579,8 @@ const go = (index) => {
 
 .logout-btn {
   padding: 5px 10px;
-  border: 1px solid #ff6633;
-  color: #ff6633;
+  border: 1px solid var(--tp-line);
+  color: var(--tp-muted);
   border-radius: 15px;
   font-size: 12px;
   text-align: center;
@@ -744,6 +744,6 @@ const go = (index) => {
 }
 
 .liked {
-  color: #ff6633;
+  color: var(--tp-muted);
 }
 </style>

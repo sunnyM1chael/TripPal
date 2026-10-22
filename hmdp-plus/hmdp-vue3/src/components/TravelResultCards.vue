@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import VoucherSubscriptionResults from './VoucherSubscriptionResults.vue'
 import { navigationForShop } from '@/utils/maps'
 import { ArrowRight, Location, Shop, Tickets } from '@element-plus/icons-vue'
 
@@ -174,13 +175,14 @@ const money = (value) =>
         <el-icon><ArrowRight /></el-icon>
       </router-link>
     </section>
+    <VoucherSubscriptionResults :tools="tools" :pending="pending" />
   </div>
 </template>
 
 <style scoped>
 .card-actions a {
   text-decoration: none;
-  color: #bd805d;
+  color: var(--tp-muted);
   font-size: 11px;
   flex-shrink: 0;
 }
@@ -193,11 +195,11 @@ const money = (value) =>
   gap: 8px;
 }
 .category-options button {
-  border: 1px solid #ece6e0;
-  background: #fffaf6;
+  border: 1px solid var(--tp-line);
+  background: var(--tp-surface-soft);
   padding: 8px 11px;
   border-radius: 9px;
-  color: #6d5041;
+  color: var(--tp-ink);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -217,7 +219,7 @@ const money = (value) =>
   color: #99919c;
 }
 .result-card {
-  border: 1px solid #eee9e6;
+  border: 1px solid var(--tp-line);
   background: #fff;
   border-radius: 14px;
   overflow: hidden;
@@ -233,8 +235,8 @@ const money = (value) =>
 }
 .shop-marker {
   flex-shrink: 0;
-  background: #fff1e8;
-  color: #e87747;
+  background: var(--tp-surface-soft);
+  color: var(--tp-muted);
   border-radius: 12px;
   width: 49px;
   height: 58px;
@@ -264,7 +266,7 @@ h4 {
   color: #77717a;
 }
 .rating {
-  color: #d7732e;
+  color: var(--tp-muted);
   font-weight: 600;
 }
 .shop-copy p {
@@ -280,10 +282,10 @@ h4 {
   margin-top: 2px;
 }
 .card-arrow {
-  color: #b4aab3;
+  color: var(--tp-muted);
 }
 .card-actions {
-  border-top: 1px solid #f5f0ed;
+  border-top: 1px solid var(--tp-line);
   padding: 8px 14px;
   display: flex;
   gap: 8px;
@@ -297,7 +299,7 @@ h4 {
   background: none;
   padding: 4px 0;
   cursor: pointer;
-  color: #d6663f;
+  color: var(--tp-muted);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -306,9 +308,9 @@ h4 {
 }
 .plan-summary {
   padding: 15px 17px;
-  background: #f5f3fc;
+  background: var(--tp-surface-soft);
   border-radius: 13px;
-  color: #625078;
+  color: var(--tp-ink);
   margin-top: 12px;
 }
 .plan-summary > span {
@@ -334,19 +336,19 @@ h4 {
   align-items: center;
   text-decoration: none;
   color: inherit;
-  border: 1px solid #f4d9c9;
+  border: 1px solid var(--tp-line);
   border-radius: 12px;
   padding: 13px;
-  background: #fff9f4;
+  background: var(--tp-surface-soft);
   margin: 8px 0;
 }
 .voucher-price {
-  color: #df613a;
+  color: var(--tp-muted);
   font-size: 21px;
   font-weight: 600;
   flex-shrink: 0;
   padding-right: 12px;
-  border-right: 1px dashed #eac9b3;
+  border-right: 1px dashed var(--tp-line);
 }
 .voucher-price small {
   display: block;
@@ -367,11 +369,11 @@ h4 {
 }
 .voucher-info span {
   font-size: 11px;
-  color: #9b7056;
+  color: var(--tp-muted);
 }
 .voucher-info small {
   font-size: 10px;
-  color: #a18e82;
+  color: var(--tp-muted);
 }
 button:disabled {
   opacity: 0.45;

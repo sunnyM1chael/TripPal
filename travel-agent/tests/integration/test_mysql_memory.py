@@ -49,3 +49,32 @@ def test_mysql_owner_isolation_leases_summary_and_sqlite_import(tmp_path):
     finally:
         store.forget(owner)
         store.close()
+
+
+def test_mysql_itinerary_persistence_and_revision_conflicts():
+    from app.itineraries.store import ItineraryStore
+    from app.itineraries.models import RevisionConflict
+    settings = Settings(_env_file=None, memory_backend="mysql", llm_provider="fake")
+    assert settings.memory_mysql_database.endswith("_test")
+    memory = MySQLMemoryStore(settings)
+    memory.initialize()
+    store = ItineraryStore(memory)
+    store.initialize()
+    assert store.ready, "Initialize the latest mysql_schema.sql in the test database first"
+    owner = "user:itinerary-" + str(uuid4())
+    try:
+        plan = store.create(owner, {"title": "持久化测试", "stops": [], "changes": []})
+        reopened = ItineraryStore(MySQLMemoryStore(settings))
+        reopened.initialize()
+        assert reopened.get(owner, plan["id"])["title"] == "持久化测试"
+        with pytest.raises(NotFoundError):
+            reopened.get("user:other", plan["id"])
+        store.update(owner, plan["id"], 1, {"title": "调整后", "stops": [], "changes": []})
+        with pytest.raises(RevisionConflict):
+            store.update(owner, plan["id"], 1, {"title": "旧版本覆盖"})
+        with pytest.raises(RevisionConflict):
+            store.delete(owner, plan["id"], 1)
+        store.delete(owner, plan["id"], 2)
+    finally:
+        store.forget(owner)
+        memory.close()

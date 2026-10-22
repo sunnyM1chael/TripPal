@@ -118,8 +118,12 @@ class AmapClient:
     async def route(self, payload: RouteRequest) -> dict:
         origin = await self.detail(payload.origin_poi_id)
         destination = await self.detail(payload.destination_poi_id)
+        return await self.route_between(origin, destination, payload.mode)
+
+    async def route_between(self, origin: dict, destination: dict, mode: str) -> dict:
+        """Internal fast path for POIs already fetched and validated by this service."""
         params = {"origin": origin["location"], "destination": destination["location"]}
-        if payload.mode == "driving":
+        if mode == "driving":
             path = "/v5/direction/driving"
             params.update({"strategy": 32, "show_fields": "cost,polyline,tmcs"})
         else:
@@ -143,11 +147,11 @@ class AmapClient:
         if coordinates and preview_points[-1] != coordinates[-1]:
             preview_points.append(coordinates[-1])
         preview_params = {"origin": origin["location"], "destination": destination["location"], "path": ";".join(preview_points)}
-        return {"origin": origin, "destination": destination, "mode": payload.mode,
+        return {"origin": origin, "destination": destination, "mode": mode,
                 "distance_m": number(route.get("distance")),
                 "duration_s": number((route.get("cost") or {}).get("duration") or route.get("duration")),
                 "steps": steps, "source": "amap", "computed_at": datetime.now(timezone.utc).isoformat(),
-                "navigation_url": navigation_url(destination, origin, payload.mode),
+                "navigation_url": navigation_url(destination, origin, mode),
                 "preview_url": "/agent-api/api/v1/maps/preview?" + urlencode(preview_params),
                 "notice": "路线与耗时为本次查询结果，出发前可刷新。持续定位、语音与实时重算由高德导航提供。"}
 

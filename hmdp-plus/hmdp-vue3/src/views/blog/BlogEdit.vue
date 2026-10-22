@@ -1,6 +1,8 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getItinerary } from '@/api/travel'
+import { draftToBlogContent } from '@/utils/visitFeedback'
 import { ArrowRight, Search } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores'
 import {
@@ -12,6 +14,8 @@ import {
 // import { showToast } from 'vant'
 
 const router = useRouter()
+const route = useRoute()
+const importedDraft = ref(false)
 const userStore = useUserStore()
 
 // 数据定义
@@ -26,10 +30,38 @@ const shops = ref([]) // 商户信息
 const shopName = ref('') // 商户名称
 const selectedShop = ref({}) // 选中的商户
 
+watch(
+  () => userStore.token,
+  () => {
+    if (!route.query.itinerary) return
+    params.title = ''
+    params.content = ''
+    fileList.value = []
+    selectedShop.value = {}
+    importedDraft.value = false
+    router.replace('/travel/itineraries')
+  }
+)
+
 // 生命周期钩子
-onMounted(() => {
+onMounted(async () => {
   checkLogin()
   queryShops()
+  if (route.query.itinerary && route.query.stop && userStore.getToken()) {
+    const token = userStore.getToken()
+    try {
+      const plan = await getItinerary(String(route.query.itinerary))
+      if (token !== userStore.getToken()) return
+      const draft = plan.stops.find((stop) => stop.id === route.query.stop)
+        ?.feedback?.draft
+      if (!draft) throw new Error('已保存的体验草稿不存在')
+      params.title = draft.title
+      params.content = draft.content
+      importedDraft.value = true
+    } catch (e) {
+      ElMessage.error(e.message || '无法读取体验草稿')
+    }
+  }
 })
 
 // 方法定义
@@ -146,10 +178,23 @@ const publishBlog = async () => {
     return
   }
 
+  if (importedDraft.value && !selectedShop.value?.id) {
+    ElMessage.warning('请选择对应的平台商户，高德地点不能直接作为平台商户发布')
+    return
+  }
+
+  const content = importedDraft.value
+    ? draftToBlogContent(params.content)
+    : params.content
+  if (importedDraft.value && [...content].length > 2048) {
+    ElMessage.warning('正文超过平台可保存的长度，请缩短后发布')
+    return
+  }
+
   try {
     const blogData = {
       title: params.title,
-      content: params.content,
+      content,
       images: fileList.value.join(','),
       shopId: selectedShop.value ? selectedShop.value.id : null
     }
@@ -166,6 +211,9 @@ const publishBlog = async () => {
 
 <template>
   <div class="blog-edit">
+    <p v-if="importedDraft" class="draft-notice">
+      已载入私有体验草稿。请核对内容、选择对应的平台商户并上传自己的照片，点击发布后才会公开。
+    </p>
     <div class="header">
       <div class="left" @click="goBack">
         <i class="iconfont icon-arrow-left"></i>
@@ -257,4 +305,13 @@ const publishBlog = async () => {
 
 <style scoped>
 @import '@/assets/css/blog-edit.css';
+.draft-notice {
+  margin: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #edf5ea;
+  color: #426b49;
+  font-size: 13px;
+  line-height: 1.7;
+}
 </style>

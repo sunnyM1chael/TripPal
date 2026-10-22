@@ -613,10 +613,10 @@ onMounted(() => {
   margin: 14px 15px;
   padding: 14px;
   text-align: left;
-  border: 1px solid #eed8ce;
+  border: 1px solid var(--tp-line);
   border-radius: 12px;
-  color: #b27d83;
-  background: linear-gradient(105deg, #fff2e8, #f8f0fa);
+  color: var(--tp-muted);
+  background: var(--tp-surface-soft);
   cursor: pointer;
   font-family: inherit;
 }
@@ -628,13 +628,13 @@ onMounted(() => {
 }
 .ask-travel strong {
   display: block;
-  color: #87616a;
+  color: var(--tp-muted);
   font-size: 13px;
   font-weight: 600;
 }
 .ask-travel small {
   display: block;
-  color: #aa929b;
+  color: var(--tp-muted);
   font-size: 11px;
   margin-top: 5px;
 }
@@ -752,7 +752,7 @@ onMounted(() => {
 }
 
 .voucher-icon {
-  background-color: #f63;
+  background-color: var(--tp-muted);
   color: #fff;
   padding: 2px 5px;
   border-radius: 2px;
@@ -808,7 +808,7 @@ onMounted(() => {
 }
 
 .voucher-price {
-  color: #f63;
+  color: var(--tp-muted);
   font-size: 16px;
   display: flex;
   align-items: baseline;
@@ -822,11 +822,11 @@ onMounted(() => {
 }
 .voucher-price span {
   font-size: 14px;
-  color: #ff6d6d;
+  color: var(--tp-muted);
   padding: 0 6px;
   line-height: 18px;
   border-radius: 9px;
-  background-color: #fff2f0;
+  background-color: var(--tp-surface-soft);
 }
 
 .voucher-right {
@@ -850,7 +850,7 @@ onMounted(() => {
   font-weight: 600;
   letter-spacing: 0.5px;
   color: #fff;
-  background: linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%);
+  background: var(--tp-ink);
   box-shadow: 0 6px 14px rgba(255, 77, 79, 0.25);
 }
 
@@ -902,8 +902,8 @@ onMounted(() => {
   padding: 2px 8px;
   line-height: 20px;
   border-radius: 10px;
-  background-color: #fff2f0;
-  color: #ff4d4f;
+  background-color: var(--tp-surface-soft);
+  color: var(--tp-muted);
   font-weight: 600;
 }
 .cancel-link {
@@ -911,15 +911,15 @@ onMounted(() => {
   padding: 4px 12px;
   line-height: 20px;
   border-radius: 12px;
-  border: 1px solid #409eff;
-  background-color: #409eff;
+  border: 1px solid var(--tp-line);
+  background-color: var(--tp-muted);
   color: #fff;
   font-size: 14px;
   cursor: pointer;
 }
 .cancel-link:hover {
-  background-color: #337ecc;
-  border-color: #337ecc;
+  background-color: var(--tp-ink);
+  border-color: var(--tp-line);
 }
 
 /* 订阅到券提醒样式 */
@@ -939,8 +939,8 @@ onMounted(() => {
   padding: 2px 8px;
   line-height: 20px;
   border-radius: 10px;
-  background-color: #e6f4ff;
-  color: #1677ff;
+  background-color: var(--tp-surface-soft);
+  color: var(--tp-muted);
   font-weight: 600;
 }
 .subscribe-link {
@@ -948,14 +948,14 @@ onMounted(() => {
   padding: 4px 12px;
   line-height: 20px;
   border-radius: 12px;
-  border: 1px solid #ffa940;
-  background-color: #ffa940;
+  border: 1px solid var(--tp-line);
+  background-color: var(--tp-muted);
   color: #fff;
   cursor: pointer;
 }
 .subscribe-link:hover {
-  background-color: #fa8c16;
-  border-color: #fa8c16;
+  background-color: var(--tp-ink);
+  border-color: var(--tp-line);
 }
 .cancel-subscribe {
   display: inline-block;

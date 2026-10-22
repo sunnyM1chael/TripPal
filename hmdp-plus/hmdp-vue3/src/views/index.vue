@@ -10,7 +10,7 @@ import router from '@/router'
 import FootBar from '@/components/FootBar.vue'
 import CityPicker from '@/components/CityPicker.vue'
 import { useTravelStore } from '@/stores/modules/travel'
-import { User, MagicStick, ArrowRight } from '@element-plus/icons-vue'
+import { User } from '@element-plus/icons-vue'
 const isReachBottom = ref(false)
 const types = ref([])
 const blogs = ref([])
@@ -117,7 +117,7 @@ const toInfo = () => {
         <el-input
           v-model="searchKeyword"
           size="mini"
-          placeholder="输入店名、地点，回车问旅伴"
+          placeholder="输入店名、地点，回车问驴友"
           @keyup.enter="searchPlacesInCity"
         >
           <template v-slot:prefix>
@@ -129,18 +129,6 @@ const toInfo = () => {
         <el-icon><User /></el-icon>
       </div>
     </div>
-    <button type="button" class="travel-entry" @click="router.push('/travel')">
-      <span class="travel-entry-icon"
-        ><el-icon><MagicStick /></el-icon
-      ></span>
-      <span class="travel-entry-copy"
-        ><strong>不知道吃什么？问问 AI 旅伴</strong
-        ><small>找好店 · 看优惠 · 安排一次轻松的探店</small></span
-      >
-      <span class="travel-entry-action"
-        >聊聊 <el-icon><ArrowRight /></el-icon
-      ></span>
-    </button>
     <div class="type-list">
       <div
         class="type-box"
@@ -231,67 +219,5 @@ const toInfo = () => {
   flex: 1;
   min-height: 0;
   height: auto;
-}
-.travel-entry {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 13px 12px 3px;
-  padding: 15px;
-  border: 1px solid #f1ddcf;
-  border-radius: 15px;
-  background: linear-gradient(105deg, #fff0e4, #f9f0fa);
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-}
-.travel-entry-icon {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 39px;
-  height: 39px;
-  font-size: 24px;
-  border-radius: 12px;
-  color: white;
-  background: linear-gradient(135deg, #f2a466, #dc838d);
-}
-.travel-entry-copy {
-  flex: 1;
-  min-width: 0;
-}
-.travel-entry-copy strong {
-  display: block;
-  color: #715047;
-  font-size: 14px;
-  font-weight: 600;
-}
-.travel-entry-copy small {
-  display: block;
-  color: #a48687;
-  font-size: 10px;
-  margin-top: 6px;
-}
-.travel-entry-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: #bb7a6b;
-  font-size: 12px;
-  white-space: nowrap;
-}
-@media (max-width: 360px) {
-  .travel-entry {
-    padding: 12px;
-    gap: 8px;
-  }
-  .travel-entry-copy strong {
-    font-size: 12px;
-  }
-  .travel-entry-copy small {
-    font-size: 9px;
-  }
 }
 </style>

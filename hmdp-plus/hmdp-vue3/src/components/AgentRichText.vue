@@ -112,7 +112,7 @@ p {
 h3 {
   font-size: 15px;
   margin: 17px 0 6px;
-  color: #252632;
+  color: var(--tp-ink);
 }
 .list-item {
   padding-left: 16px;
@@ -122,7 +122,7 @@ h3 {
   content: '•';
   position: absolute;
   left: 1px;
-  color: #ed714c;
+  color: var(--tp-muted);
 }
 code {
   background: #f2f1f7;

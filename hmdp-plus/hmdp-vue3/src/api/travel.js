@@ -31,7 +31,9 @@ travelClient.interceptors.response.use(
         'memory_unavailable',
         'preference_clear_pending',
         'not_found'
-      ].includes(code)
+      ].includes(code) ||
+      code?.startsWith('itinerary_') ||
+      code?.startsWith('operation_')
     ) {
       error.message = error.response.data.message
     } else if (error.response?.status === 401) {
@@ -47,6 +49,61 @@ travelClient.interceptors.response.use(
 
 export const loadTravelState = () =>
   travelClient.get('/api/v1/travel/state').then((r) => r.data)
+export const getVoucherSubscription = (shopId, voucherId) =>
+  travelClient
+    .get('/api/v1/voucher-subscriptions/status', {
+      params: { shop_id: shopId, voucher_id: voucherId }
+    })
+    .then((r) => r.data)
+export const prepareVoucherSubscription = (shopId, voucherId, action) =>
+  travelClient
+    .post('/api/v1/voucher-subscriptions/prepare', {
+      shop_id: shopId,
+      voucher_id: voucherId,
+      action
+    })
+    .then((r) => r.data)
+export const confirmVoucherSubscription = (actionId, acceptAutoIssue) =>
+  travelClient
+    .post(
+      `/api/v1/voucher-subscriptions/${encodeURIComponent(actionId)}/confirm`,
+      {
+        confirmed: true,
+        accept_auto_issue: acceptAutoIssue
+      }
+    )
+    .then((r) => r.data)
+export const listNotifications = (params = {}) =>
+  travelClient
+    .get('/api/v1/notifications', { params, timeout: 15000 })
+    .then((r) => r.data)
+export const readNotification = (id) =>
+  travelClient.post(`/api/v1/notifications/${encodeURIComponent(id)}/read`)
+export const readAllNotifications = () =>
+  travelClient.post('/api/v1/notifications/read-all')
+export const listItineraries = () =>
+  travelClient.get('/api/v1/itineraries').then((r) => r.data.itineraries)
+export const getItinerary = (id) =>
+  travelClient
+    .get(`/api/v1/itineraries/${encodeURIComponent(id)}`)
+    .then((r) => r.data)
+export const saveVisitFeedback = (id, stopId, payload) =>
+  travelClient
+    .put(
+      `/api/v1/itineraries/${encodeURIComponent(id)}/stops/${encodeURIComponent(stopId)}/feedback`,
+      payload
+    )
+    .then((r) => r.data)
+export const createItinerary = (payload) =>
+  travelClient.post('/api/v1/itineraries', payload).then((r) => r.data)
+export const editItinerary = (id, payload) =>
+  travelClient
+    .patch(`/api/v1/itineraries/${encodeURIComponent(id)}`, payload)
+    .then((r) => r.data)
+export const deleteItinerary = (id, revision) =>
+  travelClient.delete(`/api/v1/itineraries/${encodeURIComponent(id)}`, {
+    params: { expected_revision: revision }
+  })
 export const loadConversation = (id) =>
   travelClient
     .get(`/api/v1/travel/conversations/${encodeURIComponent(id)}`)

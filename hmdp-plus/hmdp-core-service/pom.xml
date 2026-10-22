@@ -16,6 +16,13 @@
     <description>黑马点评核心服务</description>
     <dependencies>
         <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <!-- ShardingSphere standalone metadata repository also needs H2 at runtime.
+                 Keep the version managed by the Spring Boot BOM. -->
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>org.javaup</groupId>
             <artifactId>hmdp-sharding</artifactId>
             <version>${revision}</version>
@@ -133,6 +140,11 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

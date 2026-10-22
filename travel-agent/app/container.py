@@ -12,6 +12,8 @@ from app.tools.registry import ToolRegistry
 from app.integrations.amap import AmapClient
 from app.memory.repository import ConversationRepository
 from app.integrations.hmdp.preferences import PreferenceGateway
+from app.itineraries.service import ItineraryService
+from app.services.voucher_subscription import VoucherSubscriptions
 
 
 @dataclass(slots=True)
@@ -28,4 +30,6 @@ class ApplicationContainer:
     memory: ConversationRepository
     preferences: PreferenceGateway
     maps: AmapClient
+    itineraries: ItineraryService | None = None
+    subscriptions: VoucherSubscriptions | None = None
     initialized: bool = True

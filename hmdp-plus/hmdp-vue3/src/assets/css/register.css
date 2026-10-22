@@ -50,6 +50,6 @@
 }
 
 .login-radio a {
-  color: #f63;
+  color: var(--tp-muted);
   text-decoration: none;
 }

@@ -1,15 +1,12 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElTabs, ElTabPane } from 'element-plus'
 import { ArrowLeft, Edit, ChatDotRound } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores'
 import { getUser, getUserBlog, getUserInfo } from '@/api/user'
-import {
-  indexQueryHotBlogsScroll,
-  indexAddLike,
-  indexQueryBlogById
-} from '@/api/user'
+import { queryFollowBlogs, indexAddLike, indexQueryBlogById } from '@/api/user'
+import { useFollowFeed } from '@/composables/useFollowFeed'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -18,13 +15,14 @@ const userStore = useUserStore()
 const user = ref({})
 const info = ref({})
 const blogs = ref([])
-const blogs2 = ref([]) // 关注的人的博客
+const {
+  blogs: blogs2,
+  loading: followLoading,
+  finished: followFinished,
+  error: followError,
+  load: queryBlogsOfFollow
+} = useFollowFeed(queryFollowBlogs)
 const activeName = ref('1')
-const params = reactive({
-  minTime: 0, // 上一次拉取到的时间戳
-  offset: 0 // 偏移量
-})
-const isReachBottom = ref(false)
 
 // 生命周期钩子
 onMounted(() => {
@@ -77,29 +75,6 @@ const queryUserInfo = () => {
   // }
 }
 
-const queryBlogsOfFollow = (clear) => {
-  if (clear) {
-    params.offset = 0
-    params.minTime = new Date().getTime() + 1
-  }
-  const { offset: os } = params
-
-  // 查询关注的用户的博客
-  indexQueryHotBlogsScroll(os)
-    .then(({ data }) => {
-      if (!data) {
-        return
-      }
-      const { list, ...newParams } = data
-      list.forEach((b) => (b.img = b.images.split(',')[0]))
-      blogs2.value = clear ? list : blogs2.value.concat(list)
-      Object.assign(params, newParams)
-    })
-    .catch(() => {
-      ElMessage.error('获取关注博客失败')
-    })
-}
-
 const goBack = () => {
   router.back()
 }
@@ -144,21 +119,9 @@ const queryBlogById = (b) => {
 }
 
 const onScroll = (e) => {
-  let scrollTop = e.target.scrollTop
-  let offsetHeight = e.target.offsetHeight
-  let scrollHeight = e.target.scrollHeight
-  if (scrollTop === 0) {
-    // 到顶部了，查询一次
-    queryBlogsOfFollow(true)
-  } else if (
-    scrollTop + offsetHeight + 1 > scrollHeight &&
-    !isReachBottom.value
-  ) {
-    isReachBottom.value = true
-    // 再次查询下一页数据
+  const { scrollTop, clientHeight, scrollHeight } = e.target
+  if (scrollTop + clientHeight >= scrollHeight - 40) {
     queryBlogsOfFollow()
-  } else {
-    isReachBottom.value = false
   }
 }
 </script>
@@ -221,18 +184,30 @@ const onScroll = (e) => {
         </el-tab-pane>
         <el-tab-pane label="评价" name="2">评价</el-tab-pane>
         <el-tab-pane label="粉丝(0)" name="3">粉丝(0)</el-tab-pane>
-        <el-tab-pane label="关注(0)" name="4">
+        <el-tab-pane label="关注动态" name="4">
           <div class="blog-list" @scroll="onScroll">
             <div class="blog-box" v-for="b in blogs2" :key="b.id">
-              <div class="blog-img2" @click="router.push(`/blog/${b.id}`)">
-                <img :src="'/src/assets' + b.img" alt="博客图片" />
+              <div
+                class="blog-img2"
+                @click="router.push(`/blogDetail/${b.id}`)"
+              >
+                <img
+                  v-if="b.images"
+                  :src="'/src/assets' + b.images.split(',')[0]"
+                  alt="博客图片"
+                />
               </div>
-              <div class="blog-title">{{ b.title }}</div>
+              <div
+                class="blog-title"
+                @click="router.push(`/blogDetail/${b.id}`)"
+              >
+                {{ b.title }}
+              </div>
               <div class="blog-foot">
                 <div class="blog-user-icon">
                   <img
                     :src="
-                      '/src/assets' + b.icon ||
+                      (b.icon && '/src/assets' + b.icon) ||
                       '/src/assets/imgs/icons/default-icon.png'
                     "
                     alt="用户头像"
@@ -259,6 +234,20 @@ const onScroll = (e) => {
                   {{ b.liked }}
                 </div>
               </div>
+            </div>
+            <div class="feed-status" aria-live="polite">
+              <span v-if="followLoading">正在加载关注动态…</span>
+              <template v-else-if="followError">
+                <span>{{ followError }}</span>
+                <el-button link @click="queryBlogsOfFollow()">重试</el-button>
+              </template>
+              <span v-else-if="!blogs2.length"
+                >暂无关注动态，关注的作者发布新笔记后会出现在这里。</span
+              >
+              <span v-else-if="followFinished">已经到底了</span>
+              <el-button v-else link @click="queryBlogsOfFollow()"
+                >加载更多</el-button
+              >
             </div>
           </div>
         </el-tab-pane>
@@ -362,9 +351,22 @@ const onScroll = (e) => {
 
 .content {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   background: #fff;
   margin-top: 10px;
+}
+
+:deep(.el-tabs),
+:deep(.el-tab-pane) {
+  height: 100%;
+}
+
+.feed-status {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
 }
 
 :deep(.el-tabs__header) {

@@ -14,7 +14,11 @@ export const indexQueryTypes = () => request.get('/shop-type/list')
 
 // 首页：获取博客数据，滑动屏
 export const indexQueryHotBlogsScroll = (current) =>
-  request.get('/blog/hot', null, { params: { current } })
+  request.get('/blog/hot', { params: { current } })
+
+// 用户：关注动态，使用时间戳和同时间戳偏移量滚动分页
+export const queryFollowBlogs = (params) =>
+  request.get('/blog/of/follow', { params })
 
 // 首页：点赞获取博客数据，点击查看更多
 export const indexAddLike = (id) => request.put('/blog/like/' + id)

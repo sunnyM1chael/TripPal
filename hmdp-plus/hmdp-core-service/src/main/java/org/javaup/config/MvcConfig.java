@@ -25,6 +25,7 @@ public class MvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(new LoginInterceptor())
                 .excludePathPatterns(
                         "/shop/**",
+                        "/workshop/**", // Controller checks authentication on every write/personal endpoint.
                         "/voucher/**",
                         "/shop-type/**",
                         "/upload/**",

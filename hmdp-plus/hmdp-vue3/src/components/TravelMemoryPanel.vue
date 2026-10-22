@@ -89,7 +89,7 @@ async function remove(id) {
 async function forget() {
   try {
     await ElMessageBox.confirm(
-      '将清除当前身份下的出行偏好和全部历史对话，无法恢复。',
+      '将清除当前身份下的出行偏好、全部历史对话和已保存行程，无法恢复。',
       '清除全部记忆？',
       {
         confirmButtonText: '清除全部',
@@ -235,27 +235,27 @@ async function forget() {
 </template>
 <style scoped>
 .memory-panel {
-  color: #514550;
+  color: var(--tp-ink);
 }
 .memory-tabs {
   display: flex;
-  border-bottom: 1px solid #eee5eb;
+  border-bottom: 1px solid var(--tp-line);
   gap: 14px;
 }
 .memory-tabs button {
   border: 0;
   padding: 10px 5px;
   background: none;
-  color: #9b8796;
+  color: var(--tp-muted);
   cursor: pointer;
 }
 .memory-tabs .selected {
-  color: #cd775c;
-  border-bottom: 2px solid #df9678;
+  color: var(--tp-muted);
+  border-bottom: 2px solid var(--tp-line);
 }
 .memory-caption {
   font-size: 11px;
-  color: #a08e9c;
+  color: var(--tp-muted);
   line-height: 1.8;
 }
 .memory-error {
@@ -277,20 +277,20 @@ async function forget() {
 .preference-form select {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #e4d9e2;
+  border: 1px solid var(--tp-line);
   padding: 11px;
   border-radius: 9px;
   background: #fffdfc;
   font: inherit;
-  color: #625160;
+  color: var(--tp-ink);
 }
 .preference-form small {
-  color: #af9ba7;
+  color: var(--tp-muted);
   font-size: 10px;
 }
 .save-preferences {
   border: 0;
-  background: #e48968;
+  background: var(--tp-muted);
   color: white;
   border-radius: 10px;
   padding: 12px;
@@ -299,9 +299,9 @@ async function forget() {
 .forget-memory {
   display: block;
   background: none;
-  border: 1px solid #edd3ce;
+  border: 1px solid var(--tp-line);
   border-radius: 9px;
-  color: #ba8075;
+  color: var(--tp-muted);
   padding: 11px 14px;
   margin-top: 30px;
   cursor: pointer;
@@ -314,7 +314,7 @@ async function forget() {
   border-radius: 8px;
 }
 .history-list .current {
-  background: #fff4eb;
+  background: var(--tp-surface-soft);
 }
 .history-open {
   flex: 1;
@@ -330,20 +330,20 @@ async function forget() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #715d6c;
+  color: var(--tp-ink);
   font-size: 13px;
   font-weight: 500;
 }
 .history-open span {
   display: block;
   font-size: 10px;
-  color: #b1a0ad;
+  color: var(--tp-muted);
   margin-top: 8px;
 }
 .history-delete {
   background: none;
   border: 0;
-  color: #b99997;
+  color: var(--tp-muted);
   font-size: 11px;
   padding: 12px;
   cursor: pointer;
